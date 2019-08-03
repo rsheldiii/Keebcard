@@ -9,7 +9,6 @@
 #define PADDLE_LENGTH 8
 #define SCREEN_Y 32
 #define MAX_BALL_VECTORS 9
-#define FUCKYOU 12
 
 Pong::Pong(SSD1306Device* oleda) {
   oled = oleda;
