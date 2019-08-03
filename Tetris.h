@@ -1,6 +1,6 @@
 #include <stdint.h>
 //#include <Arduino.h>
-#include <Tiny4kOLED.h>
+#include <Tiny4kOLED_common.h>
 
 #ifndef TETRIS
 #define TETRIS
@@ -22,6 +22,7 @@ typedef struct {
 // ----------------------------------------------------------------------------
 
 class Tetris {
+  SSD1306Device* oled;
   Position position;
   uint8_t score = 0;
   uint8_t buttonFlags = 0;
@@ -34,7 +35,7 @@ class Tetris {
   static uint8_t shapeIndex;
 
 	public:
-    Tetris(void);
+    Tetris(SSD1306Device* _oled);
 		uint8_t run(void);
   private:
     void main(void);

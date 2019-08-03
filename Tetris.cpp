@@ -76,7 +76,8 @@ const uint8_t Tetris::numShapes = sizeof(Tetris::shapes) / sizeof(Tetris::shapes
 
 // TODO use 3 + 800 / (16 + x*x) to determine required frames. recalculate on increase in score? or just use as function
 
-Tetris::Tetris() {
+Tetris::Tetris(SSD1306Device* _oled) {
+  oled = _oled;
   position = { STARTING_PIECE_WIDTH, STARTING_PIECE_HEIGHT };
 }
 
@@ -282,7 +283,7 @@ void Tetris::renderBoard(bool wholeScreen, bool removePiece) {
   uint8_t yMin = wholeScreen ? 0 : ((int8_t)(position.y) - 6 < 0 ? 0 : position.y - 6);
   uint8_t yMax = wholeScreen ? BOARD_HEIGHT : (position.y + 6 > BOARD_HEIGHT ? BOARD_HEIGHT : position.y + 6);
 
-  oled.setCursor(yMin*4,0);
+  oled->setCursor(yMin*4,0);
 
   for (uint8_t x = 0; x < (RENDER_SMALL ? 1 : BOARD_WIDTH/2); x++) {
     for (uint8_t y = yMin; y < yMax; y++) {
@@ -295,18 +296,18 @@ void Tetris::renderBoard(bool wholeScreen, bool removePiece) {
       block |= pixel2 ? 0x0F : 0x00;
 
       // let the screen know there's data comin
-      oled.ssd1306_send_start(SSD1306_DATA);
+      oled->startData();
 
       for (uint8_t i = 0; i < (RENDER_SMALL ? 1 : 4); i++){
-        oled.ssd1306_send_byte(SSD1306_DATA, (RENDER_SMALL ? row : block) );
+        oled->sendData((RENDER_SMALL ? row : block));
       }
 
-      oled.ssd1306_send_stop();
+      oled->endData();
     }
 
-    oled.setCursor(yMin*4,x+1);
+    oled->setCursor(yMin*4,x+1);
   }
   if (RENDER_SMALL) delay(200);
   if (removePiece) addOrRemovePiece(false);
-  oled.switchFrame();
+  oled->switchFrame();
 }

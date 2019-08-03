@@ -205,7 +205,7 @@ void Pong::updateLines(uint8_t x, uint32_t line, uint8_t numLines){
   for (uint8_t j = 0; j < numLines; j++) {
     for(uint8_t i = 0; i < 4; i++) {
       uint8_t data = 0xff & (line >> (i * 8));
-      oled->sendData( data);
+      oled->sendData(data);
     }
   }
   oled->endData();
