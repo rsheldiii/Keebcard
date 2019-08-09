@@ -8,20 +8,23 @@
 // #define BUSINESS_CARD
 // #define TETRIS
 // #define CONWAY
-#define PONG
+// #define PONG
+#define SNAKE
 
 // cut down on features since digispark has a big bootloader
 // #define DIGISPARK
 
 
 #ifdef TETRIS
-  // #include "Tetris.h"
+  #include "Tetris.h"
 #elif defined(CONWAY)
-  // #include "Conway.h"
+  #include "Conway.h"
 #elif defined(PONG)
   #include "Pong.h"
 #elif defined(BUSINESS_CARD)
-  // #include "BusinessCard.h"
+  #include "BusinessCard.h"
+#elif defined(SNAKE)
+  #include "Snake.h"
 #endif
 
 
@@ -80,6 +83,16 @@ void setup() {
     oled.clear();
     Pong pong(&oled);
     pong.run();
+  #elif defined(SNAKE)
+    oled.setMemoryAddressingMode(0);
+    oled.setCursor(8, 1);
+    oled.print("PLAYER 1 START");
+    oled.switchFrame();
+    delay(800);
+    oled.switchFrame();
+    oled.clear();
+    Snake snake(&oled);
+    snake.run();
   #endif
 }
 
