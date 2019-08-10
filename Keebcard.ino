@@ -86,7 +86,7 @@ void setup() {
   #elif defined(SNAKE)
     oled.setMemoryAddressingMode(0);
     oled.setCursor(8, 1);
-    oled.print("PLAYER 1 START");
+    oled.print("NOKIA OS");
     oled.switchFrame();
     delay(800);
     oled.switchFrame();

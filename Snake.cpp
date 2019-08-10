@@ -14,7 +14,7 @@ static uint8_t Snake::board[128] = {
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 };
 
-static Position Snake::headPosition = {6, 7};
+static Position Snake::headPosition = {2, 7};
 static Position Snake::tailPosition = {1, 7};
 static Position Snake::foodPosition = {32, 7};
 
@@ -26,10 +26,11 @@ static bool Snake::gameOver = false;
 static bool Snake::scoredThisTurn = false;
 static uint8_t Snake::time;
 static uint8_t Snake::debounce = 0;
+static uint8_t Snake::linksToAdd = 4;
 
 // snakePath defines the association between snake links. Snake links can only be the cardinal neighbor of their next-of-kin, so we only need 4 bits to represent this
 // I'll need to make these actually 2 bits eventually
-static uint8_t Snake::snakePath[128] = { 0 }; // TODO NEEDS TO BE 256(ish) but memory instability
+static uint8_t Snake::snakePath[128] = { RIGHT, RIGHT, RIGHT, RIGHT, 0 }; // TODO NEEDS TO BE 256(ish) but memory instability
 
 Snake::Snake(SSD1306Device* _oled) {
   oled = _oled;
@@ -38,8 +39,14 @@ Snake::Snake(SSD1306Device* _oled) {
 
 void Snake::run() {
   oled->switchRenderFrame();
-  sendToGrid(headPosition, true);
+  Position position = tailPosition;
   sendToGrid(tailPosition, true);
+  for (uint8_t i = 0; i < score; i++) {
+    Direction d = snakePath[i];
+    addDeltaToPosition(position, d);
+    sendToGrid(position, true);
+  }
+  sendToGrid(headPosition, true);
   sendToGrid(foodPosition, true);
 
   while(!gameOver) {
@@ -58,7 +65,7 @@ void Snake::run() {
     lastDirection = direction;
 
     // better than a no op
-    while ((uint8_t)(millis() - time) < 160) {
+    while ((uint8_t)(millis() - time) < 120) { // 160
       checkInputs();
     }
 
@@ -72,7 +79,7 @@ void Snake::run() {
   oled->print(F("Game Over!"));
   oled->setCursor(0,2);
   oled->print(F("Score: "));
-  oled->print(score);
+  oled->print(score-4);
 }
 
 void Snake::checkInputs() {
@@ -121,7 +128,7 @@ void Snake::moveSnake() {
 // must be called _before_ head moves
 void Snake::updateTailPosition() {
   // tail doesn't move the turn we score
-  if (scoredThisTurn) {
+  if (linksToAdd > 0) {
     return;
   }
   // no links if score is 0
@@ -138,19 +145,22 @@ void Snake::updateTailPosition() {
 }
 
 void Snake::updateHeadPosition() {
-  if (score > 0 || scoredThisTurn) {
+  if ((score > 0) || linksToAdd > 0) {
     // push previous direction of head onto snakePath
     snakePath[score] = lastDirection;
 
     // shrink path by 1 if not scored
-    if (!scoredThisTurn) {
+    if (linksToAdd == 0) {
       for (uint8_t i = 0; i < score; i++) {
         snakePath[i] = snakePath[i+1];
       }
     } else {
       // do it now so snakePath[score] isn't wrong
+      linksToAdd--;
       score++;
-      setNewFoodPosition();
+      if (scoredThisTurn){
+        setNewFoodPosition();
+      }
     }
   }
   // move head according to that direction
@@ -238,6 +248,9 @@ void Snake::checkGameOver() {
 
 void Snake::checkForScore() {
   scoredThisTurn = (foodPosition.x == headPosition.x && foodPosition.y == headPosition.y);
+  if (scoredThisTurn) {
+    linksToAdd += 2;
+  }
 }
 
 void Snake::setNewFoodPosition() {

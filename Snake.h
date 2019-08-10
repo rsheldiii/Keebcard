@@ -25,6 +25,7 @@ class Snake {
   static bool scoredThisTurn;
   static uint8_t time;
   static uint8_t debounce;
+  static uint8_t linksToAdd;
 
   SSD1306Device* oled;
 
