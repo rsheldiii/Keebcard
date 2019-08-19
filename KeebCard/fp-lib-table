@@ -1,0 +1,8 @@
+(fp_lib_table
+  (lib (name KeebCard)(type KiCad)(uri "$(KIPRJMOD)/KeebCard.pretty")(options "")(descr ""))
+  (lib (name keyboard_parts)(type KiCad)(uri C:/Users/Dday/Documents/Documents/pcb/keyboard_parts.pretty-master)(options "")(descr ""))
+  (lib (name Keyboard)(type KiCad)(uri C:/Users/Dday/Documents/Documents/pcb/Keyboard.pretty-master/Keyboard.pretty-master)(options "")(descr ""))
+  (lib (name TheKeebrary)(type KiCad)(uri C:/Users/Dday/Documents/Documents/pcb/TheKeebrary.pretty-master/TheKeebrary.pretty-master)(options "")(descr ""))
+  (lib (name UniversalSwitchFootprint)(type KiCad)(uri C:/Users/Dday/Documents/Documents/pcb/Universal-Switch-Footprint-master/Universal-Switch-Footprint.pretty)(options "")(descr ""))
+  (lib (name KeebioParts)(type KiCad)(uri C:/Users/Dday/Documents/Documents/pcb/Keebio-Parts.pretty-master)(options "")(descr ""))
+)
