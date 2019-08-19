@@ -126,11 +126,11 @@ void Pong::moveBall() {
 
 void Pong::movePlayer() {
   if (playerPos < (SCREEN_Y - PADDLE_LENGTH)) {
-    playerPos += digitalRead(LEFT_ARROW) == LOW ? 1 : 0;
+    playerPos += digitalRead(LEFT_BUTTON) == LOW ? 1 : 0;
   }
 
   if (playerPos > 0){
-    playerPos -= digitalRead(UP_ARROW) == LOW ? 1 : 0;
+    playerPos -= digitalRead(RIGHT_BUTTON) == LOW ? 1 : 0;
   }
 }
 

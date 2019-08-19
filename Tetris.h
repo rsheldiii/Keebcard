@@ -2,8 +2,6 @@
 //#include <Arduino.h>
 #include <Tiny4kOLED_common.h>
 
-#ifndef TETRIS
-#define TETRIS
 
 #define PIXELS_IN_SHAPE 4
 
@@ -54,5 +52,3 @@ class Tetris {
     void renderBoard(bool wholeScreen = false, bool removePiece = true);
     void checkInputs(void);
 };
-
-#endif

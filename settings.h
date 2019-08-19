@@ -1,5 +1,5 @@
-#define LEFT_ARROW 3
-#define RIGHT_ARROW 1
-#define UP_ARROW 4
+#define LEFT_BUTTON 3
+#define RIGHT_BUTTON 1
+#define MIDDLE_BUTTON 4
 
 #define SSD1306_DATA 0x40

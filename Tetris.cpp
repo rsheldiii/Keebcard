@@ -1,3 +1,4 @@
+#include "settings.h"
 #include "Tetris.h"
 
 #define SSD1306_DATA 0x40
@@ -10,12 +11,8 @@
 
 #define RENDER_SMALL false
 
-#define LEFT_ARROW 3
-#define RIGHT_ARROW 4
-#define UP_ARROW 1
-
 // cut down on features since digispark has a bootloader
-#define DIGISPARK
+// #define DIGISPARK
 
 // TODO these will not spawn at the same heights, but rotate (hopefully) correctly
 // about their axis. if I move them to all spawn at the same height, they will
@@ -23,40 +20,40 @@
 // pixel is always the lowest pixel, so that I may use that in my program
 // to spawn them all at the same height
 const Shape Tetris::shapes[28] PROGMEM = {
-  { { { 0, 0 }, { 0, 1 }, { 1, 0 }, { 1, 1 } } }, // squeah 1
-  { { { 0, 0 }, { 0, 1 }, { 1, 0 }, { 1, 1 } } }, // squeah 2
-  { { { 0, 0 }, { 0, 1 }, { 1, 0 }, { 1, 1 } } }, // squeah 3
-  { { { 0, 0 }, { 0, 1 }, { 1, 0 }, { 1, 1 } } }, // squeah 4
+  { { { 0, 0 }, { 0, 1 }, { 1, 0 }, { 1, 1 } } }, // square 1
+  { { { 0, 0 }, { 0, 1 }, { 1, 0 }, { 1, 1 } } }, // square 2
+  { { { 0, 0 }, { 0, 1 }, { 1, 0 }, { 1, 1 } } }, // square 3
+  { { { 0, 0 }, { 0, 1 }, { 1, 0 }, { 1, 1 } } }, // square 4
 
-  { { { -1, -1 }, { -1, 0 }, { 0, 0 }, { 1, 0 } } }, // jay 1
-  { { { 0, -1 }, { 0, 0 }, { 0, 1 }, { 1, 1 } } }, // jay 2
-  { { { -1, 0 }, { 0, 0 }, { 1, 0 }, { 1, -1 } } }, // jay 3
-  { { { -1, -1 }, { 0, -1 }, { 0, 0 }, { 0, 1 } } }, // jay 4
+  { { { -1, -1 }, { -1, 0 }, { 0, 0 }, { 1, 0 } } }, // J 1
+  { { { 0, -1 }, { 0, 0 }, { 0, 1 }, { 1, 1 } } }, // J 2
+  { { { -1, 0 }, { 0, 0 }, { 1, 0 }, { 1, -1 } } }, // J 3
+  { { { -1, -1 }, { 0, -1 }, { 0, 0 }, { 0, 1 } } }, // J 4
 
-  { { { -1, 0 }, { 0, 0 }, { 1, 0 }, { 1, 1 } } }, // ehl 1
-  { { { 0, 1 }, { 0, 0 }, { 0, -1 }, { 1, -1 } } }, // ehl 2
-  { { { -1, -1 }, { -1, 0 }, { 0, 0 }, { 1, 0 } } }, // ehl 3
-  { { { -1, 1 }, { 0, 1 }, { 0, 0 }, { 0, -1 } } }, // ehl 4
+  { { { -1, 0 }, { 0, 0 }, { 1, 0 }, { 1, 1 } } }, // L 1
+  { { { 0, 1 }, { 0, 0 }, { 0, -1 }, { 1, -1 } } }, // L 2
+  { { { -1, -1 }, { -1, 0 }, { 0, 0 }, { 1, 0 } } }, // L 3
+  { { { -1, 1 }, { 0, 1 }, { 0, 0 }, { 0, -1 } } }, // L 4
 
-  { { { -1, 0 }, { 0, 0 }, { 0, -1 }, { 1, -1 } } }, // ehs 1
-  { { { 0, -1 }, { 0, 0 }, { 1, 0 }, { 1, 1 } } }, // ehs 2
-  { { { -1, 1 }, { 0, 1 }, { 0, 0 }, { 1, 0 } } }, // ehs 3
-  { { { -1, -1 }, { -1, 0 }, { 0, 0 }, { 0, 1 } } }, // ehs 4
+  { { { -1, 0 }, { 0, 0 }, { 0, -1 }, { 1, -1 } } }, // S 1
+  { { { 0, -1 }, { 0, 0 }, { 1, 0 }, { 1, 1 } } }, // S 2
+  { { { -1, 1 }, { 0, 1 }, { 0, 0 }, { 1, 0 } } }, // S 3
+  { { { -1, -1 }, { -1, 0 }, { 0, 0 }, { 0, 1 } } }, // S 4
 
-  { { { -1, 0 }, { 0, 0 }, { 0, -1 }, { 1, 0 } } }, // tee 1
-  { { { 0, -1 }, { 0, 0 }, { 0, 1 }, { 1, 0 } } }, // tee 2
-  { { { -1, 0 }, { 0, 0 }, { 0, 1 }, { 1, 0 } } }, // tee 3
-  { { { -1, 0 }, { 0, -1 }, { 0, 0 }, { 0, 1 } } }, // tee 4
+  { { { -1, 0 }, { 0, 0 }, { 0, -1 }, { 1, 0 } } }, // T 1
+  { { { 0, -1 }, { 0, 0 }, { 0, 1 }, { 1, 0 } } }, // T 2
+  { { { -1, 0 }, { 0, 0 }, { 0, 1 }, { 1, 0 } } }, // T 3
+  { { { -1, 0 }, { 0, -1 }, { 0, 0 }, { 0, 1 } } }, // T 4
 
-  { { { -1, -1 }, { 0, -1 }, { 0, 0 }, { 1, 0 } } }, // Zee 1
-  { { { 0, 1 }, { 0, 0 }, { 1, 0 }, { 1, -1 } } }, // Zee 2
-  { { { -1, 0 }, { 0, 0 }, { 0, 1 }, { 1, 1 } } }, // Zee 3
-  { { { -1, 1 }, { -1, 0 }, { 0, 0 }, { 0, -1 } } }, // Zee 4
+  { { { -1, -1 }, { 0, -1 }, { 0, 0 }, { 1, 0 } } }, // Z 1
+  { { { 0, 1 }, { 0, 0 }, { 1, 0 }, { 1, -1 } } }, // Z 2
+  { { { -1, 0 }, { 0, 0 }, { 0, 1 }, { 1, 1 } } }, // Z 3
+  { { { -1, 1 }, { -1, 0 }, { 0, 0 }, { 0, -1 } } }, // Z 4
 
-  { { { -2, 0 }, { -1, 0 }, { 0, 0 }, { 1, 0 } } }, // Eye 1
-  { { { 0, 2 }, { 0, 1 }, { 0, 0 }, { 0, -1 } } }, // Eye 2
-  { { { -2, 1 }, { -1, 1 }, { 0, 1 }, { 1, 1 } } }, // Eye 3
-  { { { -1, -2 }, { -1, -1 }, { -1, 0 }, { -1, 1 } } }, // Eye 4
+  { { { -2, 0 }, { -1, 0 }, { 0, 0 }, { 1, 0 } } }, // I 1
+  { { { 0, 2 }, { 0, 1 }, { 0, 0 }, { 0, -1 } } }, // I 2
+  { { { -2, 1 }, { -1, 1 }, { 0, 1 }, { 1, 1 } } }, // I 3
+  { { { -1, -2 }, { -1, -1 }, { -1, 0 }, { -1, 1 } } }, // I 4
 };
 
 // static, so initialized to 0s anyways
@@ -68,9 +65,9 @@ uint8_t Tetris::board[32] = {
 };
 // initialized elsewhere instead of reading from progmem here
 Shape Tetris::shape = { { { 0, 0 }, { 0, 1 }, { 1, 0 }, { 1, 1 } } };
-// squeah 1
+// square 1
 // initialized elsewhere
-uint8_t Tetris::shapeIndex = 0;
+static uint8_t Tetris::shapeIndex = 1;
 
 const uint8_t Tetris::numShapes = sizeof(Tetris::shapes) / sizeof(Tetris::shapes[0]); // 28
 
@@ -108,6 +105,8 @@ void Tetris::main() {
       // needs to be done before we spawn a new piece, once again, due to rendering tricks
       // its so much faster though, totally worth it
       checkForFullRows();
+      // more double buffer bugs when you complete full rows
+      renderBoard(false, false);
       // spawn a new piece
       spawnNewPiece();
       checkInputs();
@@ -122,21 +121,21 @@ void Tetris::main() {
 
 void Tetris::checkInputs() {
   buttonFlags = buttonFlags |
-                (digitalRead(LEFT_ARROW) << LEFT_ARROW) |
-                (digitalRead(RIGHT_ARROW) << RIGHT_ARROW) |
-                (digitalRead(UP_ARROW) << UP_ARROW);
+                ((digitalRead(LEFT_BUTTON) == LOW) << LEFT_BUTTON) |
+                ((digitalRead(RIGHT_BUTTON) == LOW) << RIGHT_BUTTON) |
+                ((digitalRead(MIDDLE_BUTTON) == LOW) << MIDDLE_BUTTON);
 }
 
 // TODO coop multithread
 void Tetris::movePiece() {
   position.y--;
 #ifndef DIGISPARK
-  if ((buttonFlags & 0x01 << LEFT_ARROW) && !checkCollision({ -1, 0 })) {
+  if ((buttonFlags & 0x01 << LEFT_BUTTON) && !checkCollision({ -1, 0 })) {
     --position.x;
-  } else if ((buttonFlags & 0x01 << RIGHT_ARROW) && !checkCollision({ 1, 0 })) {
+  } else if ((buttonFlags & 0x01 << MIDDLE_BUTTON) && !checkCollision({ 1, 0 })) {
     ++position.x;
   }
-  if ((buttonFlags & 0x01 << UP_ARROW)) {
+  if ((buttonFlags & 0x01 << RIGHT_BUTTON)) {
     rotatePiece();
   }
   buttonFlags = 0;
@@ -160,13 +159,15 @@ void Tetris::spawnNewPiece() {
 void Tetris::assignRandomShape() {
   // static uint8_t index = 0;
   // assignShape(index++); // (rand()) % numShapes
-  assignShape(((uint8_t)rand()) % numShapes);
+  // assignShape(((uint8_t)rand()) % numShapes);
+  // assignShape(8);
+  assignShape(((uint8_t) rand() & 0b00000111 - 1) << 2);
 }
 
 void Tetris::assignShape(uint8_t index) {
   shapeIndex = index;
   // load shape from progmem into ram since we need it everywhere
-  memcpy_P(&shape, &shapes[index], sizeof(Shape));
+  memcpy_P(&shape, &shapes[shapeIndex], sizeof(Shape));
 }
 
 // really
@@ -193,10 +194,11 @@ void Tetris::checkForFullRows() {
     }
   }
 
+  // got a double buffer bug when rows are cleared. trying this
+  renderBoard(false, false);
   if (extraScore % 2 == 1) {
     // double render bug, I think
     // this doesn't have to be renderBoard(true) because it can only be 1 or 3, in which case our envelope catches it
-    renderBoard(false, false);
   } else if (extraScore == 4) {
     // extra score for getting a yahtzee or whatever
     extraScore++;
@@ -206,13 +208,13 @@ void Tetris::checkForFullRows() {
 }
 
 void Tetris::rotatePiece() {
-  // bitshift division yeah yeah yeah
-  const uint8_t shapeQuotient = shapeIndex >> 2;
-  const uint8_t shapeRemainder = shapeIndex % 4;
-
+  // we need to check the collision before we can see if the shape is good
+  // so we save the old id just in case
   const uint8_t oldIndex = shapeIndex;
 
-  assignShape(shapeQuotient * 4 + ((shapeRemainder + 1) % 4));
+  // shapes are arranged in groups of 4, 0-3 being the first
+  // we want to stay in the group we are in while advancing one place
+  assignShape((shapeIndex & 0b11111100) | ((shapeIndex+1) & 0b00000011));
 
   if (checkCollision({ 0, 0 })) {
     assignShape(oldIndex);
@@ -309,5 +311,9 @@ void Tetris::renderBoard(bool wholeScreen, bool removePiece) {
   }
   if (RENDER_SMALL) delay(200);
   if (removePiece) addOrRemovePiece(false);
+
+  // debugging
+  oled->setCursor(112,0);
+  oled->print(shapeIndex);
   oled->switchFrame();
 }

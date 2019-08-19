@@ -6,10 +6,10 @@
 
 // uncomment whichever one you want
 // #define BUSINESS_CARD
-// #define TETRIS
+#define TETRIS
 // #define CONWAY
 // #define PONG
-#define SNAKE
+// #define SNAKE
 
 // cut down on features since digispark has a big bootloader
 // #define DIGISPARK
@@ -27,12 +27,11 @@
   #include "Snake.h"
 #endif
 
-
 // UNIVERSAL DEFINES ===========================================================
 
-#define LEFT_ARROW 3
-#define RIGHT_ARROW 4
-#define UP_ARROW 1
+#define LEFT_BUTTON 3
+#define RIGHT_BUTTON 4
+#define MIDDLE_BUTTON 1
 
 void universal_setup() {
 
@@ -54,9 +53,9 @@ void universal_setup() {
   // Switch the half of RAM that we are writing to, to be the half that is non currently displayed
   oled.switchRenderFrame();
 
-  pinMode(LEFT_ARROW, INPUT);
-  pinMode(RIGHT_ARROW, INPUT);
-  pinMode(UP_ARROW, INPUT);
+  pinMode(LEFT_BUTTON, INPUT);
+  pinMode(RIGHT_BUTTON, INPUT);
+  pinMode(MIDDLE_BUTTON, INPUT);
 }
 
 
@@ -64,14 +63,15 @@ void setup() {
   universal_setup();
 
   #ifdef TETRIS
-    Tetris tetris;
+    oled.setMemoryAddressingMode(0);
+    Tetris tetris(&oled);
     uint8_t score = tetris.run();
     gameOver(score);
   #elif defined(CONWAY)
-    Conway conway;
+    Conway conway(&oled);
     conway.run();
   #elif defined(BUSINESS_CARD)
-    businessCard();
+    businessCard(&oled);
   #elif defined(PONG)
     oled.setMemoryAddressingMode(0);
     oled.setCursor(8, 1);

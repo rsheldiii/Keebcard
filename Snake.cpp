@@ -14,23 +14,23 @@ static uint8_t Snake::board[128] = {
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 };
 
-static Position Snake::headPosition = {2, 7};
+static Position Snake::headPosition = {6, 7};
 static Position Snake::tailPosition = {1, 7};
 static Position Snake::foodPosition = {32, 7};
 
 static Direction Snake::direction = RIGHT;
 static Direction Snake::lastDirection = RIGHT;
 
-static uint16_t Snake::score = 0;
+static uint16_t Snake::score = 4;
 static bool Snake::gameOver = false;
 static bool Snake::scoredThisTurn = false;
 static uint8_t Snake::time;
 static uint8_t Snake::debounce = 0;
-static uint8_t Snake::linksToAdd = 4;
+static uint8_t Snake::linksToAdd = 0;
 
 // snakePath defines the association between snake links. Snake links can only be the cardinal neighbor of their next-of-kin, so we only need 4 bits to represent this
 // I'll need to make these actually 2 bits eventually
-static uint8_t Snake::snakePath[128] = { RIGHT, RIGHT, RIGHT, RIGHT, 0 }; // TODO NEEDS TO BE 256(ish) but memory instability
+static uint8_t Snake::snakePath[128] = { RIGHT, RIGHT, RIGHT, RIGHT, RIGHT, RIGHT, 0 }; // TODO NEEDS TO BE 256(ish) but memory instability
 
 Snake::Snake(SSD1306Device* _oled) {
   oled = _oled;
@@ -94,7 +94,7 @@ void Snake::checkInputs() {
     }
   }
 
-  if (digitalRead(LEFT_ARROW) == LOW) {
+  if (digitalRead(LEFT_BUTTON) == LOW) {
     // not milliseconds, invocations of checkInputs
     debounce = millis();
     if (lastDirection == LEFT) {
@@ -104,7 +104,7 @@ void Snake::checkInputs() {
     }
   }
 
-  if (digitalRead(RIGHT_ARROW) == LOW) {
+  if (digitalRead(RIGHT_BUTTON) == LOW) {
     debounce = millis();
     // direction is in order - left up right down - so add 1 and % 4 and poof it works
     direction = (lastDirection+1) & 3;
