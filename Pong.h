@@ -27,19 +27,19 @@ class Pong {
   public:
     Pong(SSD1306Device* _oled);
     void run(void);
-    void update(void);
+    void updateGame(void);
   private:
-    void newBallVector(uint8_t index, bool reverseX);
-    void clearScreen(void);
-    void updateLines(uint8_t x, uint32_t line, uint8_t numLines);
-    void reset(bool hard);
-    void updateScreen(void);
     bool checkForScore(void);
-    void writeScoreToScreen(bool player);
-    void moveBall(void);
-    void movePlayer(void);
-    void moveEnemy(void);
     void checkForCollision(void);
     void checkForPause(void);
+    void clearScreen(void);
+    void moveBall(void);
+    void moveEnemy(void);
+    void movePlayer(void);
+    void newBallVector(uint8_t index, bool reverseX);
+    void reset(bool hard);
     void setupPlayArea(void);
+    void updateLines(uint8_t x, uint32_t line, uint8_t numLines);
+    void updateScreen(void);
+    void writeScoreToScreen(bool player);
 };

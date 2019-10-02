@@ -1,67 +1,50 @@
 #include "settings.h"
 #include "Pong.h"
 
-const uint8_t FONT_WIDTH = 8;
-const uint8_t TOTAL_WIDTH = 128;
+//--- CONSTANTS
 
+// letters are guaranteed to be this big
+// even if they don't look like it - they do not mask, they are 8x16 blocks
+const uint8_t FONT_WIDTH = 8;
+
+// total width of the screen
+const uint8_t TOTAL_WIDTH = 128;
+const uint8_t TOTAL_HEIGHT = 32;
+
+// positions of the paddles
 const uint8_t PLAYER_X = 30;
 const uint8_t ENEMY_X = 98;
 
 const uint8_t PADDLE_LENGTH = 8;
-const uint8_t SCREEN_Y = 32;
+// mostly to pull out the magic number 9 and give it a name
 const uint8_t MAX_BALL_VECTORS = 9;
 
 Pong::Pong(SSD1306Device* _oled) {
   oled = _oled;
+  // seed random number with value from the analog pin
   srand(analogRead(MIDDLE_BUTTON));
   // everything is done on columns so if we set vertical memory address mode
   // we get a sizeable speed boost
   oled->setMemoryAddressingMode(1);
-  // oled->setPageAddress(0b0, 0b111);
-
-  // oled->fill(0);
-  // oled->switchFrame();
-  // oled->fill(0);
-  // oled->setCursor(1,1);
-  // oled->print(F("Pong:"));
-  // oled->switchFrame();
-
+  // initialize random ball vector with rand() and analogRead for good measure
   newBallVector(rand() + analogRead(MIDDLE_BUTTON), rand() & 1);
 }
 
 void Pong::run() {
   setupPlayArea();
 
-  // oled->switchFrame();
-
   while (true) {
-    update();
+    updateGame();
     updateScreen();
   }
 }
 
 void Pong::setupPlayArea() {
-  // oled->fill(0xff);
-  // oled->fill(0);
-  // oled->switchFrame();
-  // updateLines(0,0xffffffff,255);
   writeScoreToScreen(true);
   writeScoreToScreen(false);
-  // oled->print("Pong");
-  // oled->print(playerScore);
-  //
-  // oled->setCursor(107, 2);
-  // oled->print(enemyScore);
-  // updateLines(0, 0xffffffff, 16);
-  // updateLines(112, 0xffffffff, 16);
-  //
-  // oled->switchFrame();
-  //
-  // updateLines(0, 0xffffffff, 16);
-  // updateLines(112, 0xffffffff, 16);
 }
 
-void Pong::update() {
+void Pong::updateGame() {
   clearScreen();
 
   if (!checkForScore()) {
@@ -75,6 +58,19 @@ void Pong::update() {
   } else {
     reset(false);
   }
+}
+
+// clear the only lines we care about: the ones with the paddle and ball
+void Pong::clearScreen() {
+  updateLines(PLAYER_X, 0, 1);
+  updateLines(ENEMY_X, 0, 1);
+  // In memory addressing mode 1, automatic cursor incrementation doesn't
+  // respect the frame buffer boundary (since the SSD1306 has no idea we're using
+  // a 32x128 pixel display). This means writeToScreen(x, y, z) where z is greater
+  // than 1 actually writes to the memory buffer. this was very hard to catch due
+  // to double buffering. It actually gives a nice effect to the ball though,
+  // so I'm keeping it
+  updateLines(prevBallPos.x, 0, 2);
 }
 
 bool Pong::checkForScore() {
@@ -93,20 +89,20 @@ bool Pong::checkForScore() {
   return false;
 }
 
-// new info: in memory addressing mode 1, automatic cursor incrememntation doesn't
-// work as expected. in mode 0 the cursor moves horizontally first, and at the end of
-// the screen will begin to fill the memory buffer. in mode 0, writing >4 lines
-// without setting the cursor again will transgress into the memory buffer.
-// Double buffering causes this to be hard to catch
 void Pong::writeScoreToScreen(bool player) {
+  // the score region on the screen doesn't update in the normal update flow
+  // it only updates when the score changes or if the screen is cleared
+
   // do it twice for double bufferino
   // you ever think about how adding "-erino" to the end of words is the millenial
   // equivalent of 'okeydokey' or 'yessireebob'
   for (uint8_t i = 0; i < 2; i++) {
     // clear score zones
     if (player) {
+      // oled::print expects memory mode 0
       oled->setMemoryAddressingMode(0);
-      oled->setCursor(0 + ((playerScore >= 10) ? 0 : FONT_WIDTH) + ((playerScore >= 100) ? 0 : FONT_WIDTH), 0);
+      // hacks to get the player's score to be left aligned
+      oled->setCursor(((playerScore >= 10) ? 0 : FONT_WIDTH) + ((playerScore >= 100) ? 0 : FONT_WIDTH), 0);
 
       oled->print(playerScore);
       oled->setMemoryAddressingMode(1);
@@ -119,20 +115,21 @@ void Pong::writeScoreToScreen(bool player) {
       oled->setMemoryAddressingMode(1);
     }
 
-    // switchFrame works in memory addressing mode 0. We are in mode 1 when we switch but it's just a flag, so that doesn't matter
+    // switching frames only works in memory addressing mode 0. We are in mode 1
+    // here but in tink4koled internally it's just a flag, so that doesn't matter
     oled->switchFrame();
   }
 }
 
 void Pong::moveBall() {
-  // saved later for clearing double buffer
+  // used later for clearing double buffer
   prevBallPos = { ballPos.x, ballPos.y };
   ballPos.x += ballVector.x;
   ballPos.y += ballVector.y;
 }
 
 void Pong::movePlayer() {
-  if (playerPos < (SCREEN_Y - PADDLE_LENGTH)) {
+  if (playerPos < (TOTAL_HEIGHT - PADDLE_LENGTH)) {
     playerPos += digitalRead(LEFT_BUTTON) == LOW ? 1 : 0;
   }
 
@@ -151,21 +148,24 @@ void Pong::checkForPause() {
     oled->setMemoryAddressingMode(1);
 
     while(!digitalRead(MIDDLE_BUTTON) == LOW){
-      continue;
+      delay(1);
     }
 
     oled->clear();
-    // lol
-    writeScoreToScreen(true);
-    writeScoreToScreen(false);
+    setupPlayArea();
   }
 }
 
 // +4 to get to the middle of the paddle
 void Pong::moveEnemy() {
+  // enemy doesn't move until the ball crosses into their half
+  // otherwise it's incredibly difficult to score
   if (ballPos.x >= 64) {
-    enemyPos += (ballPos.y > enemyPos+4) && enemyPos < (SCREEN_Y-PADDLE_LENGTH) ? 1 : 0;
-    enemyPos -= (ballPos.y < (int8_t)(enemyPos+4)) && enemyPos > 0 ? 1 : 0;
+    // basically just moving the paddle if the ball isn't directly in front of it
+    // AVR controllers generally don't have hardware support for division, but
+    // PADDLE_LENGTH is a const so the compiler should figure it out
+    enemyPos += (ballPos.y > enemyPos+(PADDLE_LENGTH / 2)) && enemyPos < (TOTAL_HEIGHT-PADDLE_LENGTH) ? 1 : 0;
+    enemyPos -= (ballPos.y < (int8_t)(enemyPos+(PADDLE_LENGTH / 2))) && enemyPos > 0 ? 1 : 0;
   }
 }
 
@@ -211,7 +211,7 @@ void Pong::checkForCollision() {
     newBallVector(speed, true);
   }
 
-  if ((ballPos.y + ballVector.y) > (SCREEN_Y-2) || ballPos.y + ballVector.y < 0) {
+  if ((ballPos.y + ballVector.y) > (TOTAL_HEIGHT-2) || ballPos.y + ballVector.y < 0) {
     ballVector.y = -ballVector.y;
   }
 }
@@ -237,12 +237,6 @@ void Pong::updateLines(uint8_t x, uint32_t line, uint8_t numLines){
     }
   }
   oled->endData();
-}
-
-void Pong::clearScreen() {
-  updateLines(PLAYER_X, 0, 1);
-  updateLines(ENEMY_X, 0, 1);
-  updateLines(prevBallPos.x, 0, 2);
 }
 
 // edge case when ball is on paddle line - looks ok, could fix though
