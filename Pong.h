@@ -17,8 +17,8 @@ class Pong {
   uint8_t enemyPos = 24;
   uint8_t playerPos = 24;
 
-  uint8_t enemyScore = 0;
-  uint8_t playerScore = 0;
+  uint16_t enemyScore = 0;
+  uint16_t playerScore = 0;
 
   UPosition prevBallPos = { 64, 16 };
   UPosition ballPos = { 64, 16 };
@@ -39,6 +39,7 @@ class Pong {
     void moveBall(void);
     void movePlayer(void);
     void moveEnemy(void);
-    void checkforCollision(void);
+    void checkForCollision(void);
+    void checkForPause(void);
     void setupPlayArea(void);
 };

@@ -1,18 +1,19 @@
 #include "settings.h"
 #include "Pong.h"
 
+const uint8_t FONT_WIDTH = 8;
+const uint8_t TOTAL_WIDTH = 128;
 
-#define GOAL_X 10
-#define PLAYER_X 20 + GOAL_X
-#define ENEMY_X 108 - GOAL_X
+const uint8_t PLAYER_X = 30;
+const uint8_t ENEMY_X = 98;
 
-#define PADDLE_LENGTH 8
-#define SCREEN_Y 32
-#define MAX_BALL_VECTORS 9
+const uint8_t PADDLE_LENGTH = 8;
+const uint8_t SCREEN_Y = 32;
+const uint8_t MAX_BALL_VECTORS = 9;
 
 Pong::Pong(SSD1306Device* oleda) {
   oled = oleda;
-  srand(millis());
+  srand(analogRead(MIDDLE_BUTTON));
   // everything is done on columns so if we set vertical memory address mode
   // we get a sizeable speed boost
   oled->setMemoryAddressingMode(1);
@@ -25,7 +26,7 @@ Pong::Pong(SSD1306Device* oleda) {
   // oled->print(F("Pong:"));
   // oled->switchFrame();
 
-  newBallVector(rand(), false);
+  newBallVector(rand() + analogRead(MIDDLE_BUTTON), rand() & 1);
 }
 
 void Pong::run() {
@@ -64,11 +65,13 @@ void Pong::update() {
   clearScreen();
 
   if (!checkForScore()) {
-    checkforCollision();
+    checkForCollision();
+    checkForPause();
 
     moveBall();
     movePlayer();
     moveEnemy();
+    // delay(1000);
   } else {
     reset(false);
   }
@@ -90,29 +93,33 @@ bool Pong::checkForScore() {
   return false;
 }
 
+// new info: in memory addressing mode 1, automatic cursor incrememntation doesn't
+// work as expected. in mode 0 the cursor moves horizontally first, and at the end of
+// the screen will begin to fill the memory buffer. in mode 0, writing >4 lines
+// without setting the cursor again will transgress into the memory buffer.
+// Double buffering causes this to be hard to catch
 void Pong::writeScoreToScreen(bool player) {
   // do it twice for double bufferino
+  // you ever think about how adding "-erino" to the end of words is the millenial
+  // equivalent of 'okeydokey' or 'yessireebob'
   for (uint8_t i = 0; i < 2; i++) {
     // clear score zones
     if (player) {
-      // updateLines is meant to be run in memory mode 1 which is why this whole function is funky
-      updateLines(0,0,16); // TODO don't have to clear all 16
-
       oled->setMemoryAddressingMode(0);
-      oled->setCursor(8, 0);
+      oled->setCursor(0 + ((playerScore >= 10) ? 0 : FONT_WIDTH) + ((playerScore >= 100) ? 0 : FONT_WIDTH), 0);
+
       oled->print(playerScore);
       oled->setMemoryAddressingMode(1);
-
     } else {
-      updateLines(104,0,16);
 
       oled->setMemoryAddressingMode(0);
-      oled->setCursor(112, 0);
+      oled->setCursor(TOTAL_WIDTH-FONT_WIDTH*3, 0);
+
       oled->print(enemyScore);
       oled->setMemoryAddressingMode(1);
     }
 
-    // I think we want to not switch once so we're back on the same frame for double buffering purposes
+    // switchFrame works in memory addressing mode 0. We are in mode 1 when we switch but it's just a flag, so that doesn't matter
     oled->switchFrame();
   }
 }
@@ -134,6 +141,26 @@ void Pong::movePlayer() {
   }
 }
 
+void Pong::checkForPause() {
+  if (digitalRead(MIDDLE_BUTTON) == LOW) {
+    oled->clear();
+    oled->setMemoryAddressingMode(0);
+    oled->setCursor(40, 1);
+    oled->print("PAUSED");
+    oled->switchFrame();
+    oled->setMemoryAddressingMode(1);
+
+    while(!digitalRead(MIDDLE_BUTTON) == LOW){
+      continue;
+    }
+
+    oled->clear();
+    // lol
+    writeScoreToScreen(true);
+    writeScoreToScreen(false);
+  }
+}
+
 // +4 to get to the middle of the paddle
 void Pong::moveEnemy() {
   if (ballPos.x >= 64) {
@@ -150,8 +177,8 @@ void Pong::newBallVector(uint8_t index, bool reverseX) {
     case 0:
     case 1:
     case 2:
-      ballVector = { x, -2};
-      break;
+      // ballVector = { x, -2};
+      // break;
     case 3:
       ballVector = { x, -1};
       break;
@@ -159,17 +186,19 @@ void Pong::newBallVector(uint8_t index, bool reverseX) {
       ballVector = { x*2, 0 };
       break;
     case 5:
-      ballVector = { x, 1 };
-      break;
+      // ballVector = { x, 1 };
+      // break;
     case 6:
     case 7:
     case 8:
-      ballVector = { x, 2 };
+      ballVector = { x, 1 };
       break;
+      // ballVector = { x, 2 };
+      // break;
   }
 }
 
-void Pong::checkforCollision() {
+void Pong::checkForCollision() {
   // checking that you are within the paddle
   // also allowing last-minute saves with the || there
   if ((ballPos.x == PLAYER_X+1 || ballPos.x == PLAYER_X) && (ballPos.y>=playerPos && ballPos.y<=playerPos+PADDLE_LENGTH)) {
@@ -198,7 +227,6 @@ void Pong::reset(bool hard) {
   }
 }
 
-// numLines is an optimization for ball
 void Pong::updateLines(uint8_t x, uint32_t line, uint8_t numLines){
   oled->setCursor(x, 0);
   oled->startData();
@@ -225,6 +253,8 @@ void Pong::updateScreen() {
   uint32_t enemyLine = ((uint32_t)0xff) << enemyPos;
   uint32_t ballLine = ((uint32_t)0x3) << ballPos.y;
 
+  // remember that memory addressing mode bug? it happens here too. it ends up
+  // looking more like a real pong ball though so I'm leaving it
   updateLines(ballPos.x, ballLine, 2);
   updateLines(PLAYER_X, playerLine, 1);
   updateLines(ENEMY_X, enemyLine, 1);
