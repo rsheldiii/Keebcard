@@ -37,6 +37,7 @@ class Pong {
     void moveEnemy(void);
     void movePlayer(void);
     void newBallVector(uint8_t index, bool reverseX);
+    void randomBallVector(void);
     void reset(bool hard);
     void setupPlayArea(void);
     void updateLines(uint8_t x, uint32_t line, uint8_t numLines);

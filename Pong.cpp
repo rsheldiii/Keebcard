@@ -16,8 +16,9 @@ const uint8_t PLAYER_X = 30;
 const uint8_t ENEMY_X = 98;
 
 const uint8_t PADDLE_LENGTH = 8;
-// mostly to pull out the magic number 9 and give it a name
-const uint8_t MAX_BALL_VECTORS = 9;
+// mostly to pull out the magic number and give it a name
+// this is used for random generation and paddle bouncing
+const uint8_t MAX_BALL_VECTORS = 10;
 
 Pong::Pong(SSD1306Device* _oled) {
   oled = _oled;
@@ -26,8 +27,8 @@ Pong::Pong(SSD1306Device* _oled) {
   // everything is done on columns so if we set vertical memory address mode
   // we get a sizeable speed boost
   oled->setMemoryAddressingMode(1);
-  // initialize random ball vector with rand() and analogRead for good measure
-  newBallVector(rand() + analogRead(MIDDLE_BUTTON), rand() & 1);
+
+  randomBallVector();
 }
 
 void Pong::run() {
@@ -160,13 +161,22 @@ void Pong::checkForPause() {
 void Pong::moveEnemy() {
   // enemy doesn't move until the ball crosses into their half
   // otherwise it's incredibly difficult to score
-  if (ballPos.x >= 64) {
+  if (ballPos.x >= TOTAL_WIDTH/2) {
     // basically just moving the paddle if the ball isn't directly in front of it
     // AVR controllers generally don't have hardware support for division, but
     // PADDLE_LENGTH is a const so the compiler should figure it out
-    enemyPos += (ballPos.y > enemyPos+(PADDLE_LENGTH / 2)) && enemyPos < (TOTAL_HEIGHT-PADDLE_LENGTH) ? 1 : 0;
-    enemyPos -= (ballPos.y < (int8_t)(enemyPos+(PADDLE_LENGTH / 2))) && enemyPos > 0 ? 1 : 0;
+    // >= and <= makes the enemy hit less line drives - it hits too many
+    enemyPos += (ballPos.y >= enemyPos+(PADDLE_LENGTH / 2)) && enemyPos < (TOTAL_HEIGHT-PADDLE_LENGTH) ? 1 : 0;
+    enemyPos -= (ballPos.y <= (int8_t)(enemyPos+(PADDLE_LENGTH / 2))) && enemyPos > 0 ? 1 : 0;
   }
+}
+
+// used for serves
+// we want soft serves so we cherry-pick our data
+void Pong::randomBallVector() {
+  // 3 or 6
+  uint8_t vector = ((rand() & 1) + 1) * 3;
+  newBallVector(vector, rand() & 1);
 }
 
 void Pong::newBallVector(uint8_t index, bool reverseX) {
@@ -175,26 +185,25 @@ void Pong::newBallVector(uint8_t index, bool reverseX) {
 
   switch(index) {
     case 0:
+      ballVector = { x, -2};
+      break;
     case 1:
     case 2:
-      // ballVector = { x, -2};
-      // break;
     case 3:
       ballVector = { x, -1};
       break;
     case 4:
+    case 5:
       ballVector = { x*2, 0 };
       break;
-    case 5:
-      // ballVector = { x, 1 };
-      // break;
     case 6:
     case 7:
     case 8:
       ballVector = { x, 1 };
       break;
-      // ballVector = { x, 2 };
-      // break;
+    case 9:
+      ballVector = { x, 2 };
+      break;
   }
 }
 
@@ -203,14 +212,13 @@ void Pong::checkForCollision() {
   // also allowing last-minute saves with the || there
   if ((ballPos.x == PLAYER_X+1 || ballPos.x == PLAYER_X) && (ballPos.y>=playerPos && ballPos.y<=playerPos+PADDLE_LENGTH)) {
     uint8_t speed = ballPos.y - playerPos + 1;
-    // TODO one of these 4's doesn't happen
     newBallVector(speed, false);
   } else if ((ballPos.x+1 == ENEMY_X-1 || ballPos.x+1 == ENEMY_X) && (ballPos.y>=enemyPos && ballPos.y<=enemyPos+PADDLE_LENGTH)) {
     uint8_t speed = ballPos.y - enemyPos + 1;
-    // TODO one of these 4's doesn't happen
     newBallVector(speed, true);
   }
 
+  // if the ball hits the top or bottom, reverse its y direction
   if ((ballPos.y + ballVector.y) > (TOTAL_HEIGHT-2) || ballPos.y + ballVector.y < 0) {
     ballVector.y = -ballVector.y;
   }
@@ -218,9 +226,11 @@ void Pong::checkForCollision() {
 
 void Pong::reset(bool hard) {
   prevBallPos = { ballPos.x, ballPos.y };
-  ballPos = { 64, 16 };
-  ballVector = { 1, 1 };
+  // once again, no division, but these are consts
+  ballPos = { TOTAL_WIDTH / 2, TOTAL_HEIGHT / 2 };
+  randomBallVector();
 
+  // unused as of now
   if(hard) {
     playerScore = 0;
     enemyScore = 0;
@@ -247,11 +257,17 @@ void Pong::updateScreen() {
   uint32_t enemyLine = ((uint32_t)0xff) << enemyPos;
   uint32_t ballLine = ((uint32_t)0x3) << ballPos.y;
 
+  // fun one: in mem mode 0, you can be on the second page. meaning the "hack"
+  // where writing two successive lines updates the memory buffer actually
+  // updates the line to the right in the memory buffer. whoops
+  // uint32_t scoreLine = 0xaaaaaaaa;
+
   // remember that memory addressing mode bug? it happens here too. it ends up
   // looking more like a real pong ball though so I'm leaving it
   updateLines(ballPos.x, ballLine, 2);
   updateLines(PLAYER_X, playerLine, 1);
   updateLines(ENEMY_X, enemyLine, 1);
+  // updateLines(TOTAL_WIDTH / 2, scoreLine, 1);
 
   oled->switchFrame();
 }
