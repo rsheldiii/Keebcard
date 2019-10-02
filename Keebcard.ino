@@ -6,9 +6,9 @@
 
 // uncomment whichever one you want
 // #define BUSINESS_CARD
-#define TETRIS
+//#define TETRIS
 // #define CONWAY
-// #define PONG
+ #define PONG
 // #define SNAKE
 
 // cut down on features since digispark has a big bootloader
@@ -16,15 +16,15 @@
 
 
 #ifdef TETRIS
-  #include "Tetris.h"
+#include "Tetris.h"
 #elif defined(CONWAY)
-  #include "Conway.h"
+#include "Conway.h"
 #elif defined(PONG)
-  #include "Pong.h"
+#include "Pong.h"
 #elif defined(BUSINESS_CARD)
-  #include "BusinessCard.h"
+#include "BusinessCard.h"
 #elif defined(SNAKE)
-  #include "Snake.h"
+#include "Snake.h"
 #endif
 
 // UNIVERSAL DEFINES ===========================================================
@@ -42,8 +42,8 @@ void universal_setup() {
 
   oled.begin();
 
-  #ifdef PONG
-  #endif
+#ifdef PONG
+#endif
 
   oled.setFont(FONT8X16);
   // Clear the memory before turning on the display
@@ -62,42 +62,42 @@ void universal_setup() {
 void setup() {
   universal_setup();
 
-  #ifdef TETRIS
-    oled.setMemoryAddressingMode(0);
-    Tetris tetris(&oled);
-    uint8_t score = tetris.run();
-    gameOver(score);
-  #elif defined(CONWAY)
-    Conway conway(&oled);
-    conway.run();
-  #elif defined(BUSINESS_CARD)
-    businessCard(&oled);
-  #elif defined(PONG)
-    oled.setMemoryAddressingMode(0);
-    oled.setCursor(8, 1);
-    oled.print("PLAYER 1 START");
-    oled.switchFrame();
-    delay(800);
-    oled.switchFrame();
-    oled.setMemoryAddressingMode(1);
-    oled.clear();
-    Pong pong(&oled);
-    pong.run();
-  #elif defined(SNAKE)
-    oled.setMemoryAddressingMode(0);
-    oled.setCursor(8, 1);
-    oled.print("NOKIA OS");
-    oled.switchFrame();
-    delay(800);
-    oled.switchFrame();
-    oled.clear();
-    Snake snake(&oled);
-    snake.run();
-  #endif
+#ifdef TETRIS
+  oled.setMemoryAddressingMode(0);
+  Tetris tetris(&oled);
+  uint8_t score = tetris.run();
+  gameOver(score);
+#elif defined(CONWAY)
+  Conway conway(&oled);
+  conway.run();
+#elif defined(BUSINESS_CARD)
+  businessCard(&oled);
+#elif defined(PONG)
+  oled.setMemoryAddressingMode(0);
+  oled.setCursor(8, 1);
+  oled.print("PLAYER 1 START");
+  oled.switchFrame();
+  delay(800);
+  oled.switchFrame();
+  oled.setMemoryAddressingMode(1);
+  oled.clear();
+  Pong pong(&oled);
+  pong.run();
+#elif defined(SNAKE)
+  oled.setMemoryAddressingMode(0);
+  oled.setCursor(8, 1);
+  oled.print("NOKIA OS");
+  oled.switchFrame();
+  delay(800);
+  oled.switchFrame();
+  oled.clear();
+  Snake snake(&oled);
+  snake.run();
+#endif
 }
 
 void loop() {
- // nothing right now
+  // nothing right now
 }
 
 void gameOver(uint8_t score) {
