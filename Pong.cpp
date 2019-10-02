@@ -11,8 +11,8 @@ const uint8_t PADDLE_LENGTH = 8;
 const uint8_t SCREEN_Y = 32;
 const uint8_t MAX_BALL_VECTORS = 9;
 
-Pong::Pong(SSD1306Device* oleda) {
-  oled = oleda;
+Pong::Pong(SSD1306Device* _oled) {
+  oled = _oled;
   srand(analogRead(MIDDLE_BUTTON));
   // everything is done on columns so if we set vertical memory address mode
   // we get a sizeable speed boost

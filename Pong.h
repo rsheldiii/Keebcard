@@ -25,7 +25,7 @@ class Pong {
   Position ballVector = { 1, 1 };
 
   public:
-    Pong(SSD1306Device* oleda);
+    Pong(SSD1306Device* _oled);
     void run(void);
     void update(void);
   private:
