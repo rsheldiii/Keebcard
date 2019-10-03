@@ -98,23 +98,19 @@ void Pong::writeScoreToScreen(bool player) {
   // you ever think about how adding "-erino" to the end of words is the millenial
   // equivalent of 'okeydokey' or 'yessireebob'
   for (uint8_t i = 0; i < 2; i++) {
-    // clear score zones
+    // oled::print expects memory mode 0
+    oled->setMemoryAddressingMode(0);
     if (player) {
-      // oled::print expects memory mode 0
-      oled->setMemoryAddressingMode(0);
       // hacks to get the player's score to be left aligned
       oled->setCursor(((playerScore >= 10) ? 0 : FONT_WIDTH) + ((playerScore >= 100) ? 0 : FONT_WIDTH), 0);
 
       oled->print(playerScore);
-      oled->setMemoryAddressingMode(1);
     } else {
-
-      oled->setMemoryAddressingMode(0);
       oled->setCursor(TOTAL_WIDTH-FONT_WIDTH*3, 0);
 
       oled->print(enemyScore);
-      oled->setMemoryAddressingMode(1);
     }
+    oled->setMemoryAddressingMode(1);
 
     // switching frames only works in memory addressing mode 0. We are in mode 1
     // here but in tink4koled internally it's just a flag, so that doesn't matter
@@ -130,6 +126,7 @@ void Pong::moveBall() {
 }
 
 void Pong::movePlayer() {
+  // check the bounds
   if (playerPos < (TOTAL_HEIGHT - PADDLE_LENGTH)) {
     playerPos += digitalRead(LEFT_BUTTON) == LOW ? 1 : 0;
   }
@@ -157,7 +154,6 @@ void Pong::checkForPause() {
   }
 }
 
-// +4 to get to the middle of the paddle
 void Pong::moveEnemy() {
   // enemy doesn't move until the ball crosses into their half
   // otherwise it's incredibly difficult to score
@@ -172,7 +168,7 @@ void Pong::moveEnemy() {
 }
 
 // used for serves
-// we want soft serves so we cherry-pick our data
+// we want soft serves so we cherry-pick our numbers
 void Pong::randomBallVector() {
   // 3 or 6
   uint8_t vector = ((rand() & 1) + 1) * 3;
@@ -237,6 +233,9 @@ void Pong::reset(bool hard) {
   }
 }
 
+// SSD1306 needs to be talked to in chunks of 8 pixels by column.
+// we forego the library to write direct to the screen - bitmap writing may have
+// worked too but would be a little more awkward
 void Pong::updateLines(uint8_t x, uint32_t line, uint8_t numLines){
   oled->setCursor(x, 0);
   oled->startData();
@@ -251,8 +250,6 @@ void Pong::updateLines(uint8_t x, uint32_t line, uint8_t numLines){
 
 // edge case when ball is on paddle line - looks ok, could fix though
 void Pong::updateScreen() {
-
-
   uint32_t playerLine = ((uint32_t)0xff) << playerPos;
   uint32_t enemyLine = ((uint32_t)0xff) << enemyPos;
   uint32_t ballLine = ((uint32_t)0x3) << ballPos.y;
