@@ -76,13 +76,13 @@ void Pong::clearScreen() {
 
 bool Pong::checkForScore() {
   if (ballPos.x < PLAYER_X) {
-    enemyScore++;
+    enemyScore = min(999, enemyScore+1);
     writeScoreToScreen(false);
     return true;
   }
 
   if (ballPos.x > ENEMY_X) {
-    playerScore++;
+    playerScore = min(999, playerScore+1);
     writeScoreToScreen(true);
     return true;
   }
