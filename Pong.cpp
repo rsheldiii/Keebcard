@@ -46,7 +46,7 @@ void Pong::setupPlayArea() {
 }
 
 void Pong::updateGame() {
-  clearScreen();
+  clearGame();
 
   if (!checkForScore()) {
     checkForCollision();
@@ -62,7 +62,7 @@ void Pong::updateGame() {
 }
 
 // clear the only lines we care about: the ones with the paddle and ball
-void Pong::clearScreen() {
+void Pong::clearGame() {
   updateLines(PLAYER_X, 0, 1);
   updateLines(ENEMY_X, 0, 1);
   // In memory addressing mode 1, automatic cursor incrementation doesn't
@@ -138,18 +138,21 @@ void Pong::movePlayer() {
 
 void Pong::checkForPause() {
   if (digitalRead(MIDDLE_BUTTON) == LOW) {
-    oled->clear();
     oled->setMemoryAddressingMode(0);
+    oled->clear();
     oled->setCursor(40, 1);
     oled->print("PAUSED");
     oled->switchFrame();
-    oled->setMemoryAddressingMode(1);
 
     while(!digitalRead(MIDDLE_BUTTON) == LOW){
       delay(1);
     }
 
     oled->clear();
+    oled->switchFrame();
+    oled->clear();
+
+    oled->setMemoryAddressingMode(1);
     setupPlayArea();
   }
 }

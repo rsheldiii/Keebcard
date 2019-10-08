@@ -32,7 +32,7 @@ class Pong {
     bool checkForScore(void);
     void checkForCollision(void);
     void checkForPause(void);
-    void clearScreen(void);
+    void clearGame(void);
     void moveBall(void);
     void moveEnemy(void);
     void movePlayer(void);

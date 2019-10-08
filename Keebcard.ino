@@ -42,17 +42,16 @@ void universal_setup() {
 
   oled.begin();
 
-#ifdef PONG
-#endif
-
   oled.setFont(FONT8X16);
-  // Clear the memory before turning on the display
-  oled.clear();
-  // Turn on the display
-  oled.on();
   // Switch the half of RAM that we are writing to, to be the half that is non currently displayed
   oled.switchRenderFrame();
 
+  oled.clear();
+  oled.switchFrame();
+  oled.clear();
+
+  // Turn on the display
+  oled.on();
   pinMode(LEFT_BUTTON, INPUT);
   pinMode(RIGHT_BUTTON, INPUT);
   pinMode(MIDDLE_BUTTON, INPUT);
@@ -63,7 +62,6 @@ void setup() {
   universal_setup();
 
 #ifdef TETRIS
-  oled.setMemoryAddressingMode(0);
   Tetris tetris(&oled);
   uint8_t score = tetris.run();
   gameOver(score);
@@ -73,14 +71,13 @@ void setup() {
 #elif defined(BUSINESS_CARD)
   businessCard(&oled);
 #elif defined(PONG)
-  oled.setMemoryAddressingMode(0);
   oled.setCursor(8, 1);
   oled.print("PLAYER 1 START");
   oled.switchFrame();
   delay(800);
   oled.switchFrame();
-  oled.setMemoryAddressingMode(1);
   oled.clear();
+  oled.setMemoryAddressingMode(1);
   Pong pong(&oled);
   pong.run();
 #elif defined(SNAKE)
