@@ -22,8 +22,6 @@ const uint8_t MAX_BALL_VECTORS = 10;
 
 Pong::Pong(SSD1306Device* _oled) {
   oled = _oled;
-  // seed random number with value from the analog pin
-  srand(analogRead(MIDDLE_BUTTON));
   // everything is done on columns so if we set vertical memory address mode
   // we get a sizeable speed boost
   oled->setMemoryAddressingMode(1);
@@ -60,6 +58,14 @@ void Pong::updateGame() {
     reset(false);
   }
 }
+
+// void Pong::clearScreen() {
+//   oled->startData();
+//   for (uint16_t n = 0; n < 1024; n++) {
+//     oled->sendData(0);
+//   }
+//   oled->endData();
+// }
 
 // clear the only lines we care about: the ones with the paddle and ball
 void Pong::clearGame() {

@@ -46,12 +46,17 @@ void universal_setup() {
   // Switch the half of RAM that we are writing to, to be the half that is non currently displayed
   oled.switchRenderFrame();
 
+  // clear both buffers of any dead squirrels
   oled.clear();
   oled.switchFrame();
   oled.clear();
 
   // Turn on the display
   oled.on();
+
+  // seed random number with value from the analog pin
+  srand(analogRead(MIDDLE_BUTTON));
+
   pinMode(LEFT_BUTTON, INPUT);
   pinMode(RIGHT_BUTTON, INPUT);
   pinMode(MIDDLE_BUTTON, INPUT);
@@ -72,7 +77,7 @@ void setup() {
   businessCard(&oled);
 #elif defined(PONG)
   oled.setCursor(8, 1);
-  oled.print("PLAYER 1 START");
+  oled.print(F("PLAYER 1 START"));
   oled.switchFrame();
   delay(800);
   oled.switchFrame();
@@ -83,7 +88,7 @@ void setup() {
 #elif defined(SNAKE)
   oled.setMemoryAddressingMode(0);
   oled.setCursor(8, 1);
-  oled.print("NOKIA OS");
+  oled.print(F("NOKIA OS"));
   oled.switchFrame();
   delay(800);
   oled.switchFrame();

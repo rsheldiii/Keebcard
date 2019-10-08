@@ -4,9 +4,10 @@
 
 const uint8_t BOARD_WIDTH = 64;
 const uint8_t BOARD_HEIGHT = 16;
+const uint8_t STARTING_SCORE = 4;
 
 // I'll need to make these actually 2 bits eventually
-static QuadrupleDirection SnakePath::snakePath[200] = { { RIGHT, RIGHT, RIGHT, RIGHT }, { RIGHT, RIGHT }, }; // TODO NEEDS TO BE 256(ish) but memory instability
+static QuadrupleDirection SnakePath::snakePath[200] = { { RIGHT, RIGHT, RIGHT, RIGHT } }; // TODO NEEDS TO BE 256(ish) but memory instability
 
 Direction SnakePath::get(uint8_t index) {
   QuadrupleDirection d = snakePath[index >> 2];
@@ -41,22 +42,23 @@ void SnakePath::set(uint8_t index, Direction direction) {
 
 
 // if you're reading this and it's still broken out it's for testing purposes
-// each byte represents a 16x2 swath, which is then of course 8 pixels 2x2.
+// each byte represents a 16x2 swath of pixels, which is then of course 8 positions 2x2.
 // swaths start in the top left and proceed rightwards in rows
 // pixels start at the top as well and go downwards
-static uint8_t Snake::board[128] = {
+const uint8_t BOARD_SIZE = 128;
+static uint8_t Snake::board[BOARD_SIZE] = {
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 };
 
-static Position Snake::headPosition = {6, 7};
 static Position Snake::tailPosition = {1, 7};
+static Position Snake::headPosition = {1 + STARTING_SCORE + 1, 7};
 static Position Snake::foodPosition = {32, 7};
 
 static Direction Snake::direction = RIGHT;
 static Direction Snake::lastDirection = RIGHT;
 
-static uint16_t Snake::score = 4;
+static uint16_t Snake::score = STARTING_SCORE;
 static bool Snake::gameOver = false;
 static bool Snake::scoredThisTurn = false;
 static uint8_t Snake::time;
@@ -71,32 +73,32 @@ Snake::Snake(SSD1306Device* _oled) {
 }
 
 void Snake::run() {
+  // no double buffering for now. very little to update so it runs fast anyways
   oled->switchRenderFrame();
 
   static Position position = tailPosition;
 
-  sendToGrid(tailPosition, true);
+  // "initialize" snake onto screen
+  sendToGrid(position, true);
   for (uint8_t i = 0; i < score; i++) {
     Direction d = snakePath.get(i);
     addDeltaToPosition(position, d);
     sendToGrid(position, true);
   }
   sendToGrid(headPosition, true);
-  sendToGrid(foodPosition, true);
+  setNewFoodPosition();
 
   while(!gameOver) {
     time = millis();
-    // cache last direction to use it when moving the head later
-    // for a brief moment direction and lastDirection are both the same direction,
-    // but we correct immediately.
-    // this isn't done in checkInputs as we may call that multiple times
 
-
-    checkGameOver();
     checkForScore();
     checkInputs();
 
     moveSnake();
+    // cache last direction to use it when moving the head later
+    // for a brief moment direction and lastDirection are both the same direction,
+    // but we correct immediately.
+    // this isn't done in checkInputs as we call that multiple times
     lastDirection = direction;
 
     // better than a no op
@@ -104,12 +106,14 @@ void Snake::run() {
       checkInputs();
     }
 
+    checkGameOver();
+
     // delay(max(120 - (millis() - time), 0));
     // this is for debugging
     // renderScreen();
   }
 
-  oled->fill(0);
+  oled->clear();
   oled->setCursor(0,0);
   oled->print(F("Game Over!"));
   oled->setCursor(0,2);
@@ -209,12 +213,14 @@ void Snake::sendToGrid(Position position, bool value) {
   // modulo 8
   uint8_t col = position.y & 7;
 
+  // here we actually set the new pixel in the grid
   if (value) {
     *row |= 1 << col;
   } else {
     *row &= ~(1 << col);
   }
 
+  // we now copy the row in order to avoid trampling over it with bit shifting
   uint8_t displayRow = *row;
 
   if ((position.y >> 2) & 1 == 1) {
@@ -289,54 +295,81 @@ void Snake::checkForScore() {
 }
 
 void Snake::setNewFoodPosition() {
-  srand(millis());
+  // this one's a doozy because it's actually kind of hard to find a random spot
 
-  // the dreaded do while
-  // TODO this is gonna suck with large snakes plz fix
-  do {
-    foodPosition = { rand() % BOARD_WIDTH, rand() % BOARD_HEIGHT };
-  } while (checkForCollision(foodPosition, true));
+  // do a random check real quick to see if we can't land something
+  foodPosition = { rand() & 0b111111, rand() & 0b1111 };
 
-  // in order to avoid high memory costs we'll need to scan for how many spots we have and choose one eventually
-  // uint16_t openSpots = 0;
-  // for (uint8_t x = 0; x < BOARD_WIDTH; x++) {
-  //   for (uint8_t y)
-  // }
-
-  sendToGrid(foodPosition, true);
-}
-
-void Snake::renderScreen() {
-  for (uint8_t y = 0; y < 4; y++) { // 4 pages in vertical addressing mode TODO REPLACE WITH 4
-    oled->setCursor(0,y);
-
-    oled->startData();
-    for (uint8_t x = 0; x < BOARD_WIDTH; x++) {
-      uint8_t row = board[x + (BOARD_WIDTH * (y / 2))];
-      if (y % 2 == 1) {
-        // leave the squirrels
-        row = row >> 4;
+  if (checkForCollision(foodPosition, true)) {
+    // oh boy, you've done it now
+    // when the going gets tough and all the food spots are taken, instead of
+    // randomly searching for one, let's find how many there are and choose one
+    // at random. We are incredibly low on memory so we pass through twice
+    // instead of keeping a ledger of what spaces are open
+    uint16_t openSegments = 0;
+    for (uint8_t s = 0; s < BOARD_SIZE; s++) {
+      if (board[s] != 0xffff) {
+        openSegments++;
       }
-
-      // delay(1);
-      // renderRow(row);
     }
-    oled->endData();
+
+    uint16_t nextSpot = rand() % openSegments;
+    openSegments = 0;
+    for (uint8_t s = 0; s < BOARD_SIZE; s++) {
+      if (board[s] != 0xffff) {
+        openSegments++;
+        if (openSegments == nextSpot){
+          //
+          uint8_t y = s >> 3;
+          uint8_t x = s & 7 << 3;
+          for (uint8_t i = 0; i < 8; i++) {
+            if (!checkForCollision({x + i, y}, true)) {
+              foodPosition = {x + i, y};
+              sendToGrid(foodPosition, true);
+              return;
+            }
+          }
+        }
+      }
+    }
+
+    // uh, they win
+  } else {
+    sendToGrid(foodPosition, true);
   }
-
-  // oled->switchFrame();
 }
 
-// really uint4_t
-// do setCursor first
-void Snake::renderRow(uint8_t row) {
-  // "inflating" the row
-  // 0101 = 00110011
-  // 1110 = 11111100, etc
-  row = (row & 8) << 4 | (row & 8) << 3 | (row & 4) << 3 | (row & 4) << 2 | (row & 2) << 2 | (row & 2) << 1 | (row & 1) << 1 | (row & 1);
-
-  oled->sendData(row);
-  oled->sendData(row);
-  // board width is half the pixel size so
-  // oled->sendData(0x00);
-}
+// void Snake::renderScreen() {
+//   for (uint8_t y = 0; y < 4; y++) { // 4 pages in vertical addressing mode TODO REPLACE WITH 4
+//     oled->setCursor(0,y);
+//
+//     oled->startData();
+//     for (uint8_t x = 0; x < BOARD_WIDTH; x++) {
+//       uint8_t row = board[x + (BOARD_WIDTH * (y / 2))];
+//       if (y % 2 == 1) {
+//         // leave the squirrels
+//         row = row >> 4;
+//       }
+//
+//       // delay(1);
+//       // renderRow(row);
+//     }
+//     oled->endData();
+//   }
+//
+//   // oled->switchFrame();
+// }
+//
+// // really uint4_t
+// // do setCursor first
+// void Snake::renderRow(uint8_t row) {
+//   // "inflating" the row
+//   // 0101 = 00110011
+//   // 1110 = 11111100, etc
+//   row = (row & 8) << 4 | (row & 8) << 3 | (row & 4) << 3 | (row & 4) << 2 | (row & 2) << 2 | (row & 2) << 1 | (row & 1) << 1 | (row & 1);
+//
+//   oled->sendData(row);
+//   oled->sendData(row);
+//   // board width is half the pixel size so
+//   // oled->sendData(0x00);
+// }
