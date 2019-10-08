@@ -2,8 +2,43 @@
 #include "Snake.h"
 
 
-#define BOARD_WIDTH 64
-#define BOARD_HEIGHT 16
+const uint8_t BOARD_WIDTH = 64;
+const uint8_t BOARD_HEIGHT = 16;
+
+// I'll need to make these actually 2 bits eventually
+static QuadrupleDirection SnakePath::snakePath[200] = { { RIGHT, RIGHT, RIGHT, RIGHT }, { RIGHT, RIGHT }, }; // TODO NEEDS TO BE 256(ish) but memory instability
+
+Direction SnakePath::get(uint8_t index) {
+  QuadrupleDirection d = snakePath[index >> 2];
+  switch(index & 0b11) {
+    case 0:
+      return d.firstDirection;
+    case 1:
+      return d.secondDirection;
+    case 2:
+      return d.thirdDirection;
+    case 3:
+      return d.fourthDirection;
+  }
+}
+
+void SnakePath::set(uint8_t index, Direction direction) {
+  switch(index & 0b11) {
+    case 0:
+      snakePath[index >> 2].firstDirection = direction;
+      break;
+    case 1:
+      snakePath[index >> 2].secondDirection = direction;
+      break;
+    case 2:
+      snakePath[index >> 2].thirdDirection = direction;
+      break;
+    case 3:
+      snakePath[index >> 2].fourthDirection = direction;
+      break;
+  }
+}
+
 
 // if you're reading this and it's still broken out it's for testing purposes
 // each byte represents a 16x2 swath, which is then of course 8 pixels 2x2.
@@ -29,8 +64,6 @@ static uint8_t Snake::debounce = 0;
 static uint8_t Snake::linksToAdd = 0;
 
 // snakePath defines the association between snake links. Snake links can only be the cardinal neighbor of their next-of-kin, so we only need 4 bits to represent this
-// I'll need to make these actually 2 bits eventually
-static uint8_t Snake::snakePath[128] = { RIGHT, RIGHT, RIGHT, RIGHT, RIGHT, RIGHT, 0 }; // TODO NEEDS TO BE 256(ish) but memory instability
 
 Snake::Snake(SSD1306Device* _oled) {
   oled = _oled;
@@ -39,10 +72,12 @@ Snake::Snake(SSD1306Device* _oled) {
 
 void Snake::run() {
   oled->switchRenderFrame();
-  Position position = tailPosition;
+
+  static Position position = tailPosition;
+
   sendToGrid(tailPosition, true);
   for (uint8_t i = 0; i < score; i++) {
-    Direction d = snakePath[i];
+    Direction d = snakePath.get(i);
     addDeltaToPosition(position, d);
     sendToGrid(position, true);
   }
@@ -136,23 +171,23 @@ void Snake::updateTailPosition() {
     tailPosition = {headPosition.x, headPosition.y}; // TODO should be able to just do headPosition. shallow copy but no pointers so meh
   } else {
     // get last link in the chain
-    uint8_t linkBeforeTail = snakePath[0];
+    Direction linkBeforeTail = snakePath.get(0);
     // move tailPosition to last link in the chain
     // we will eventually break apart the uint8_t to two uint4_t and cast to a Direction
     // these numbers might not match up then
-    addDeltaToPosition(tailPosition, (Direction)linkBeforeTail);
+    addDeltaToPosition(tailPosition, linkBeforeTail);
   }
 }
 
 void Snake::updateHeadPosition() {
   if ((score > 0) || linksToAdd > 0) {
     // push previous direction of head onto snakePath
-    snakePath[score] = lastDirection;
+    snakePath.set(score, lastDirection);
 
     // shrink path by 1 if not scored
     if (linksToAdd == 0) {
       for (uint8_t i = 0; i < score; i++) {
-        snakePath[i] = snakePath[i+1];
+        snakePath.set(i, snakePath.get(i+1));
       }
     } else {
       // do it now so snakePath[score] isn't wrong
@@ -215,7 +250,7 @@ bool Snake::checkForCollision(Position collisionPosition, bool includeHead) {
   Position snakePosition = tailPosition;
 
   for (uint16_t i = 0; i < score; i++) {
-    Direction d = snakePath[i];
+    Direction d = snakePath.get(i);
     addDeltaToPosition(snakePosition, d);
 
     if (snakePosition.x == collisionPosition.x && snakePosition.y == collisionPosition.y) {

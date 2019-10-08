@@ -2,15 +2,31 @@
 //#include <Arduino.h>
 #include <Tiny4kOLED_common.h>
 
-typedef struct {
+typedef struct Position {
   uint8_t x;
   uint8_t y;
 } Position;
 
 enum Direction {LEFT = 0, UP = 1, RIGHT = 2, DOWN = 3 };
 
+typedef struct QuadrupleDirection  {
+  Direction firstDirection : 2;
+  Direction secondDirection : 2;
+  Direction thirdDirection : 2;
+  Direction fourthDirection : 2;
+} QuadrupleDirection;
+
+class SnakePath {
+  static QuadrupleDirection snakePath[200]; // the path the snake travels, starting at the head. 2 bits per for cardinal neighbors, a max of 1024 pixels * 2 bits / 8
+
+  public:
+    Direction get(uint8_t index);
+    void set(uint8_t index, Direction direction);
+};
+
 class Snake {
-  static uint8_t snakePath[128]; // the path the snake travels, starting at the head. 2 bits per for cardinal neighbors, a max of 1024 pixels * 2 bits / 8
+  static SnakePath snakePath;
+
   // STARTS AT THE TAIL
   static uint8_t board[128]; // 16 x 64 pixel board, / 8 for uint8
   static Position headPosition; // position of head of snake
