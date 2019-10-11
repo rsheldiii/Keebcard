@@ -333,7 +333,7 @@ void Snake::setNewFoodPosition() {
       }
     }
 
-    // uh, they win
+    //
   } else {
     sendToGrid(foodPosition, true);
   }
@@ -362,14 +362,14 @@ void Snake::setNewFoodPosition() {
 //
 // // really uint4_t
 // // do setCursor first
-// void Snake::renderRow(uint8_t row) {
-//   // "inflating" the row
-//   // 0101 = 00110011
-//   // 1110 = 11111100, etc
-//   row = (row & 8) << 4 | (row & 8) << 3 | (row & 4) << 3 | (row & 4) << 2 | (row & 2) << 2 | (row & 2) << 1 | (row & 1) << 1 | (row & 1);
-//
-//   oled->sendData(row);
-//   oled->sendData(row);
-//   // board width is half the pixel size so
-//   // oled->sendData(0x00);
-// }
+void Snake::renderRow(uint8_t row) {
+  // "inflating" the row
+  // 0101 = 00110011
+  // 1110 = 11111100, etc
+  row = (row & 8) << 4 | (row & 8) << 3 | (row & 4) << 3 | (row & 4) << 2 | (row & 2) << 2 | (row & 2) << 1 | (row & 1) << 1 | (row & 1);
+
+  oled->sendData(row);
+  oled->sendData(row);
+  // board width is half the pixel size so
+  // oled->sendData(0x00);
+}
