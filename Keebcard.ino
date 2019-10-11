@@ -8,8 +8,8 @@
 // #define BUSINESS_CARD
 // #define TETRIS
 // #define CONWAY
- // #define PONG
-#define SNAKE
+#define PONG
+// #define SNAKE
 
 // cut down on features since digispark has a big bootloader
 // #define DIGISPARK

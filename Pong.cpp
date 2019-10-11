@@ -50,9 +50,9 @@ void Pong::updateGame() {
     checkForCollision();
     checkForPause();
 
-    moveBall();
     movePlayer();
     moveEnemy();
+    moveBall();
     // delay(1000);
   } else {
     reset(false);
@@ -134,11 +134,11 @@ void Pong::moveBall() {
 void Pong::movePlayer() {
   // check the bounds
   if (playerPos < (TOTAL_HEIGHT - PADDLE_LENGTH)) {
-    playerPos += digitalRead(LEFT_BUTTON) == LOW ? 1 : 0;
+    playerPos += digitalRead(RIGHT_BUTTON) == LOW ? 1 : 0;
   }
 
   if (playerPos > 0){
-    playerPos -= digitalRead(RIGHT_BUTTON) == LOW ? 1 : 0;
+    playerPos -= digitalRead(LEFT_BUTTON) == LOW ? 1 : 0;
   }
 }
 
@@ -190,9 +190,9 @@ void Pong::newBallVector(uint8_t index, bool reverseX) {
 
   switch(index) {
     case 0:
+    case 1:
       ballVector = { x, -2};
       break;
-    case 1:
     case 2:
     case 3:
       ballVector = { x, -1};
@@ -203,9 +203,9 @@ void Pong::newBallVector(uint8_t index, bool reverseX) {
       break;
     case 6:
     case 7:
-    case 8:
       ballVector = { x, 1 };
       break;
+    case 8:
     case 9:
       ballVector = { x, 2 };
       break;
@@ -218,7 +218,7 @@ void Pong::checkForCollision() {
   if ((ballPos.x == PLAYER_X+1 || ballPos.x == PLAYER_X) && (ballPos.y>=playerPos && ballPos.y<=playerPos+PADDLE_LENGTH)) {
     uint8_t speed = ballPos.y - playerPos + 1;
     newBallVector(speed, false);
-  } else if ((ballPos.x+1 == ENEMY_X-1 || ballPos.x+1 == ENEMY_X) && (ballPos.y>=enemyPos && ballPos.y<=enemyPos+PADDLE_LENGTH)) {
+  } else if ((ballPos.x == ENEMY_X-1 || ballPos.x == ENEMY_X) && (ballPos.y>=enemyPos && ballPos.y<=enemyPos+PADDLE_LENGTH)) {
     uint8_t speed = ballPos.y - enemyPos + 1;
     newBallVector(speed, true);
   }
@@ -232,7 +232,8 @@ void Pong::checkForCollision() {
 void Pong::reset(bool hard) {
   prevBallPos = { ballPos.x, ballPos.y };
   // once again, no division, but these are consts
-  ballPos = { TOTAL_WIDTH / 2, TOTAL_HEIGHT / 2 };
+  const uint8_t BALL_RANGE = 8; // always power of 2
+  ballPos = { TOTAL_WIDTH / 2, rand() & (BALL_RANGE - 1) + (TOTAL_HEIGHT - BALL_RANGE) / 2 };
   randomBallVector();
 
   // unused as of now
