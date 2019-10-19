@@ -17,18 +17,18 @@ typedef struct QuadrupleDirection  {
 } QuadrupleDirection;
 
 class SnakePath {
-  static QuadrupleDirection snakePath[200]; // the path the snake travels, starting at the head. 2 bits per for cardinal neighbors, a max of 1024 pixels * 2 bits / 8
+  static QuadrupleDirection snakePath[192]; // the path the snake travels, starting at the head. 2 bits per for cardinal neighbors, a max of 1024 pixels * 2 bits / 8
 
   public:
-    Direction get(uint8_t index);
-    void set(uint8_t index, Direction direction);
+    Direction get(uint16_t index);
+    void set(uint16_t index, Direction direction);
 };
 
 class Snake {
   static SnakePath snakePath;
 
   // STARTS AT THE TAIL
-  static uint8_t board[128]; // 16 x 64 pixel board, / 8 for uint8
+  static uint8_t board[96]; // 16 x 64 pixel board, / 8 for uint8
   static Position headPosition; // position of head of snake
   static Position tailPosition; // position of tail of snake
   static Position foodPosition;
@@ -48,7 +48,7 @@ class Snake {
 
   public:
     Snake(SSD1306Device* _oled);
-    void run(void);
+    uint16_t run(void);
   private:
     void main(void);
     void moveSnake(void);
