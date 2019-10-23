@@ -6,6 +6,10 @@ This is the home of the KeebCard project. Originally designed as a business card
 
 The KeebCard is centered around an SSD1306-powered 128x32 monochromatic display and an ATTINY85-10SU. The code uses the wonderful [Tiny4kOLED library](https://github.com/datacute/Tiny4kOLED) to communicate with the screen via i2c. With 8 kilobytes of program space and 512 bytes of RAM, it's a fun challenge getting anything to run on this thing!
 
+# Assembly
+
+[Head here for the current assembly video](https://www.youtube.com/watch?v=mJQla--lSXY)
+
 # Code
 
 At the base of this project (currently) is the code that runs on the machine. I don't normally program in systems-level languages, so it's a little rough. You can change what program is flashed by messing with the define at the top of KeebCard.ino.
