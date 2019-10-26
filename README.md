@@ -8,7 +8,7 @@ The KeebCard is centered around an SSD1306-powered 128x32 monochromatic display 
 
 # Assembly
 
-[Head here for the current assembly video](https://www.youtube.com/watch?v=mJQla--lSXY)
+[Head here for the current assembly video](https://www.youtube.com/watch?v=mJQla--lSXY). I may reshoot this, we'll see
 
 # Code
 
@@ -16,7 +16,7 @@ At the base of this project (currently) is the code that runs on the machine. I 
 
 # Flashing
 
-The KeebCard code is currently compiled and flashed with an ISP programmer via the Arduino suite. I'll add detailed flashing instructions later.
+The KeebCard code is currently compiled and flashed with an ISP programmer via the Arduino suite. [check out the flashing tutorial here](https://www.youtube.com/watch?v=2kj1aFIwNek)
 
 # Fabbing
 
