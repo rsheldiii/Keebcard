@@ -6,8 +6,20 @@ const uint8_t BOARD_WIDTH = 48;
 const uint8_t BOARD_HEIGHT = 16;
 const uint8_t STARTING_SCORE = 4;
 
-// I'll need to make these actually 2 bits eventually
-static QuadrupleDirection SnakePath::snakePath[192] = { { RIGHT, RIGHT, RIGHT, RIGHT } }; // TODO NEEDS TO BE 256(ish) but memory instability
+// the board is not a multiple of the screen height, so this is the difference
+// from one edge of the screen to the board
+const uint8_t HORIZONTAL_GAP = ((64 - BOARD_WIDTH) / 2);
+
+// if you're reading this and it's still broken out it's for testing purposes
+// each byte represents a 16x2 swath of pixels, which is then of course 8 positions 2x2.
+// swaths start in the top left and proceed rightwards in rows
+// pixels start at the top as well and go downwards
+// 8 for uint8_t
+const uint8_t BOARD_SIZE = BOARD_WIDTH * BOARD_HEIGHT / 8;
+
+
+// divided by 4 because quadruple direction
+static QuadrupleDirection SnakePath::snakePath[BOARD_WIDTH * BOARD_HEIGHT / 4] = { { RIGHT, RIGHT, RIGHT, RIGHT }, { RIGHT, RIGHT, RIGHT, RIGHT }, { RIGHT, RIGHT, RIGHT, RIGHT } }; // TODO NEEDS TO BE 256(ish) but memory instability
 
 Direction SnakePath::get(uint16_t index) {
   QuadrupleDirection d = snakePath[index >> 2];
@@ -40,12 +52,6 @@ void SnakePath::set(uint16_t index, Direction direction) {
   }
 }
 
-
-// if you're reading this and it's still broken out it's for testing purposes
-// each byte represents a 16x2 swath of pixels, which is then of course 8 positions 2x2.
-// swaths start in the top left and proceed rightwards in rows
-// pixels start at the top as well and go downwards
-const uint8_t BOARD_SIZE = 96;
 static uint8_t Snake::board[BOARD_SIZE] = { 0 };
 
 static Position Snake::tailPosition = {1, 7};
@@ -69,34 +75,25 @@ Snake::Snake(SSD1306Device* _oled) {
   oled->fill(0);
 }
 
-uint16_t Snake::run() {
-  static Position position = tailPosition;
-
+// set up the play area. used at start and for pause
+void Snake::setup() {
   oled->setMemoryAddressingMode(1);
-  oled->setCursor(0,0);
+  // * 2 because we are rasterized - every pixel is a 2x2 squares
+  oled->setCursor((HORIZONTAL_GAP - 1) * 2,0);
   oled->startData();
-  for(uint8_t i = 0; i < 8; i++) {
-    for(uint8_t j = 0; j < 8; j++){
-      oled->sendData(0xaaaa);
-    }
-
-    for(uint8_t k = 0; k < 8; k++){
-      oled->sendData(0x5555);
-    }
+  for(uint8_t j = 0; j < 8; j++){
+    oled->sendData(0xffff);
   }
-  oled->endData();
-  oled->setCursor(BOARD_WIDTH*2 + 16, 0);
-  for(uint8_t i = 0; i < 8; i++) {
-    for(uint8_t j = 0; j < 8; j++){
-      oled->sendData(0xaaaa);
-    }
 
-    for(uint8_t k = 0; k < 8; k++){
-      oled->sendData(0x5555);
-    }
+  oled->endData();
+  oled->setCursor((BOARD_WIDTH + HORIZONTAL_GAP) * 2, 0);
+  for(uint8_t i = 0; i < 8; i++) {
+    oled->sendData(0xffff);
   }
   oled->endData();
   oled->setMemoryAddressingMode(0);
+
+  Position position = tailPosition;
 
   // "initialize" snake onto screen
   sendToGrid(position, true);
@@ -106,9 +103,18 @@ uint16_t Snake::run() {
     sendToGrid(position, true);
   }
   sendToGrid(headPosition, true);
+}
+
+uint16_t Snake::run() {
+  setup();
+
   setNewFoodPosition();
 
   while(!gameOver) {
+    checkForPause();
+    // we don't have to but, just in case...
+    sendToGrid(foodPosition, true);
+
     time = millis();
 
     checkForScore();
@@ -128,11 +134,15 @@ uint16_t Snake::run() {
 
     checkGameOver();
 
+    // for debugging food placement
+    // oled->setCursor(0,0);
+    // oled->print(foodPosition.x);
+
     // delay(max(120 - (millis() - time), 0));
     // this is for debugging
     // renderScreen();
   }
-  return score;
+  return score - 4;
 }
 
 void Snake::checkInputs() {
@@ -224,7 +234,7 @@ void Snake::sendToGrid(Position position, bool value) {
   // many AVR chips have no division operator. it works, but it's _very_ slow.
   // bit shifting is division with no remainder. so, `>> 3` = `/ 8`
   uint8_t* row = &board[position.x + (BOARD_WIDTH * (position.y >> 3))];
-  // modulo 8
+  // modulo
   uint8_t col = position.y & 7;
 
   // here we actually set the new pixel in the grid
@@ -241,7 +251,6 @@ void Snake::sendToGrid(Position position, bool value) {
     displayRow = displayRow >> 4;
   }
 
-  const uint8_t HORIZONTAL_GAP = ((64 - BOARD_WIDTH) / 2);
   // * 2 should really be 128 / BOARD_WIDTH but also 128 should be a const
   oled->setCursor((position.x + HORIZONTAL_GAP) * 2, position.y >> 2);
   oled->startData();
@@ -270,12 +279,14 @@ bool Snake::checkForCollision(Position collisionPosition, bool includeHead) {
   Position snakePosition = tailPosition;
 
   for (uint16_t i = 0; i < score; i++) {
-    Direction d = snakePath.get(i);
-    addDeltaToPosition(snakePosition, d);
 
+    // gotta check first, increment next, in order to check the tailPosition
     if (snakePosition.x == collisionPosition.x && snakePosition.y == collisionPosition.y) {
       return true;
     }
+
+    Direction d = snakePath.get(i);
+    addDeltaToPosition(snakePosition, d);
   }
 
   if (includeHead && headPosition.x == collisionPosition.x && headPosition.y == collisionPosition.y) {
@@ -283,6 +294,22 @@ bool Snake::checkForCollision(Position collisionPosition, bool includeHead) {
   }
 
   return false;
+}
+
+void Snake::checkForPause() {
+  if (digitalRead(MIDDLE_BUTTON) == LOW) {
+    oled->clear();
+    oled->setCursor(40, 1);
+    oled->print(F("PAUSED"));
+
+    while(!digitalRead(MIDDLE_BUTTON) == LOW){
+      delay(1);
+    }
+
+    oled->clear();
+
+    setup();
+  }
 }
 
 void Snake::checkGameOver() {
@@ -296,7 +323,11 @@ void Snake::checkGameOver() {
     gameOver = true;
   }
 
-  if (headPosition.x >= BOARD_WIDTH || headPosition.x <= 0 || headPosition.y >= BOARD_HEIGHT || headPosition.y <= 0) {
+
+  // where are the < 0 checks you ask? well these are uints.
+  // why are they uints you exclaim, we need to check if we go below zero!
+  // this already does that. because it's unsigned the uint underflows
+  if (headPosition.x >= BOARD_WIDTH || headPosition.y >= BOARD_HEIGHT) {
     gameOver = true;
   }
 }
@@ -320,25 +351,27 @@ void Snake::setNewFoodPosition() {
     // randomly searching for one, let's find how many there are and choose one
     // at random. We are incredibly low on memory so we pass through twice
     // instead of keeping a ledger of what spaces are open
-    uint16_t openSegments = 0;
+    uint8_t openSegments = 0;
     for (uint8_t s = 0; s < BOARD_SIZE; s++) {
       if (board[s] != 0xffff) {
         openSegments++;
       }
     }
 
-    uint16_t nextSpot = rand() % openSegments;
+    uint8_t nextSpot = (rand() % openSegments) + 1;
     openSegments = 0;
-    for (uint8_t s = 0; s < BOARD_SIZE; s++) {
-      if (board[s] != 0xffff) {
+
+    for (uint8_t segmentIndex = 0; segmentIndex < BOARD_SIZE; segmentIndex++) {
+      if (board[segmentIndex] != 0xffff) {
         openSegments++;
         if (openSegments == nextSpot){
           //
-          uint8_t y = s >> 3;
-          uint8_t x = s & 7 << 3;
+          uint8_t y = segmentIndex / BOARD_WIDTH;
+          uint8_t x = segmentIndex % BOARD_WIDTH;
+
           for (uint8_t i = 0; i < 8; i++) {
-            if (!checkForCollision({x + i, y}, true)) {
-              foodPosition = {x + i, y};
+            if (!checkForCollision({x, y+i}, true)) {
+              foodPosition = {x, y + i};
               sendToGrid(foodPosition, true);
               return;
             }
@@ -347,10 +380,13 @@ void Snake::setNewFoodPosition() {
       }
     }
 
-    //
+    // they won, what do we do?
   } else {
     sendToGrid(foodPosition, true);
   }
+
+  // why not right
+  srand(millis() + analogRead(MIDDLE_BUTTON));
 }
 
 // void Snake::renderScreen() {

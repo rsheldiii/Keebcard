@@ -1,4 +1,4 @@
-#include <TinyWireM.h>
+ #include <TinyWireM.h>
 #include <Tiny4kOLED.h>
 #include "settings.h"
 
@@ -50,6 +50,7 @@ void universal_setup() {
   oled.on();
 
   // seed random number with value from the analog pin
+  // it doesn't vary all that much, but it helps
   srand(analogRead(MIDDLE_BUTTON));
 
   pinMode(LEFT_BUTTON, INPUT);
@@ -116,5 +117,5 @@ void gameOver(uint8_t score) {
     oled.print(F("Game Over!"));
     oled.setCursor(0,2);
     oled.print(F("Score: "));
-    oled.print(score-4);
+    oled.print(score);
 }

@@ -50,11 +50,13 @@ class Snake {
     Snake(SSD1306Device* _oled);
     uint16_t run(void);
   private:
+    void setup(void);
     void main(void);
     void moveSnake(void);
     void renderScreen(void);
     void sendToGrid(Position position, bool value);
     void checkInputs(void);
+    void checkForPause(void);
     void updateTailPosition(void);
     void updateHeadPosition(void);
     void pushNewLink(void);
