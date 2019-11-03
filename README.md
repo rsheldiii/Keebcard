@@ -38,3 +38,11 @@ All parts are available from Mouser save the screen
 # Modifying
 
 If you want to modify the design, check out the KeebCard directory, which houses the original Kicad project.  
+
+
+# KeebCard in media
+
+If you've seen the KeebCard elsewhere, please let me know!
+
+* Unilad Tech: https://www.facebook.com/UNILADTech/videos/1574779679325114/?v=1574779679325114
+* AlexGyver's Youtube channel: https://www.youtube.com/watch?v=djgHV5JCNTk
