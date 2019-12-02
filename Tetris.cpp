@@ -1,16 +1,40 @@
 #include "settings.h"
 #include "Tetris.h"
 
-#define SSD1306_DATA 0x40
+// TODO
+// auto-down
+// correct scoring
+// score determines your level
+// level determines your speed
+// more randomness in pieces
+// figure out why the game resets at the end
 
-#define BOARD_WIDTH 8
-#define BOARD_HEIGHT 32
+const uint8_t BOARD_WIDTH = 8;
+const uint8_t BOARD_HEIGHT = 32;
 
-#define STARTING_PIECE_WIDTH 4
-#define STARTING_PIECE_HEIGHT 34
+const uint8_t STARTING_PIECE_WIDTH = 4;
+const uint8_t STARTING_PIECE_HEIGHT = 34;
 
-#define RENDER_SMALL false
+const bool RENDER_SMALL = false;
 
+#define LEFT_BUTTON_FLAG (buttonFlags & (1 << LEFT_BUTTON))
+#define RIGHT_BUTTON_FLAG (buttonFlags & (1 << RIGHT_BUTTON))
+#define MIDDLE_BUTTON_FLAG (buttonFlags & (1 << MIDDLE_BUTTON))
+
+
+
+#define MILLIS_PER_TICK (125 - (score >> 2))
+
+// TODO can just be one macro with an input of which button to check
+// also predicating this on one frame not passing means we drop inputs if its going too slow. might want to rethink
+// TODO make millis_per_frame * 12 bit shift? check specification
+#define REPEAT_DELAY 250
+#define SHOULD_MOVE_LEFT (LEFT_BUTTON_FLAG && (leftButton == frameTime || (frameTime - leftButton > REPEAT_DELAY)))
+#define SHOULD_ROTATE (RIGHT_BUTTON_FLAG && (rightButton == frameTime || (frameTime - rightButton > REPEAT_DELAY)))
+#define SHOULD_MOVE_RIGHT (MIDDLE_BUTTON_FLAG && (upButton == frameTime || (frameTime - upButton > REPEAT_DELAY)))
+
+
+#define ALL_THREE_BUTTONS_HELD (SHOULD_MOVE_LEFT && SHOULD_MOVE_RIGHT && SHOULD_ROTATE)  //  (buttonFlags == 0b00011010)
 // cut down on features since digispark has a bootloader
 // #define DIGISPARK
 
@@ -69,6 +93,8 @@ Shape Tetris::shape = { { { 0, 0 }, { 0, 1 }, { 1, 0 }, { 1, 1 } } };
 // initialized elsewhere
 static uint8_t Tetris::shapeIndex = 1;
 
+static uint32_t Tetris::frameTime = millis();
+
 const uint8_t Tetris::numShapes = sizeof(Tetris::shapes) / sizeof(Tetris::shapes[0]); // 28
 
 // TODO use 3 + 800 / (16 + x*x) to determine required frames. recalculate on increase in score? or just use as function
@@ -85,60 +111,108 @@ uint8_t Tetris::run() {
 }
 
 void Tetris::main() {
+  assignRandomShape();
+  uint32_t lastTickTime = millis();
+
   while (true) {
-    uint32_t t1 = millis();
-    checkInputs();
-    // if the piece is in free fall
-    if(!checkCollision({ 0, -1})) {
-      checkInputs();
-      movePiece();
-      renderBoard();
-      checkInputs();
+    // every frame needs a unique identifier to tie inputs to
+    frameTime = millis();
+
+    checkInputs(true);
+
+    // if it's not a frame where we move downwards, don't even check for collision
+    if ((millis() - lastTickTime > MILLIS_PER_TICK) || ALL_THREE_BUTTONS_HELD) {
+      // hacky short circuit to incoporate immediate auto-down into the old event loop
+      if (ALL_THREE_BUTTONS_HELD) {
+        // clear board of current piece, it'll probably be outside the envelope
+        renderBoard(false, false);
+        renderBoard(false, false);
+        while(!checkCollision({ 0, -1})) {
+          movePiece(true);
+        }
+      }
+
+      if(!checkCollision({ 0, -1})) {
+        movePiece(true);
+        renderBoard();
+      } else {
+        // no collisions above the plane of play
+        if (position.y >= BOARD_HEIGHT) break;
+        // re-add piece back in its new final resting place
+        // from this point until we spawnNewPiece we're in a bit of a weird state, with the piece on the board. can't renderBoard(false, true) in this state or we will lose that
+        addOrRemovePiece(true);
+        // write once more to get rid of a nasty double buffer bug introduced when I stopped rendering the full screen
+        // pieces will bounce if they hit but don't complete a row
+        renderBoard(false, false);
+        // check to see if any rows are full and need to be culled
+        // needs to be done before we spawn a new piece, once again, due to rendering tricks
+        // its so much faster though, totally worth it
+        checkForFullRows();
+        // spawn a new piece
+        spawnNewPiece();
+      }
+      // always reset lastTickTime after we trigger
+      lastTickTime = millis();
     } else {
-      if (position.y >= BOARD_HEIGHT) break;
-      // re-add piece back in its new final resting place
-      addOrRemovePiece(true);
-      // write once more to get rid of a nasty double buffer bug introduced when I stopped rendering the full screen
-      // pieces will bounce if they hit but don't complete a row
-      renderBoard(false, false);
-      // check to see if any rows are full and need to be culled
-      // needs to be done before we spawn a new piece, once again, due to rendering tricks
-      // its so much faster though, totally worth it
-      checkForFullRows();
-      // more double buffer bugs when you complete full rows
-      renderBoard(false, false);
-      // spawn a new piece
-      spawnNewPiece();
-      checkInputs();
+      movePiece(false);
+      renderBoard();
+    }
+  }
+}
+
+// we track deltas of how long the user has pressed a button.
+// we trigger one move immediately, then chain moves a few frames later
+// an obvious target to dry up. maybe with a macro I guess idk
+void Tetris::checkInputs(bool unsetFlags) {
+  if (digitalRead(LEFT_BUTTON) == LOW) {
+    if (!LEFT_BUTTON_FLAG) {
+      leftButton = frameTime;
+    }
+    buttonFlags = buttonFlags | (1 << LEFT_BUTTON);
+  } else if (unsetFlags) {
+    buttonFlags = buttonFlags & ~(1 << LEFT_BUTTON);
+  }
+
+  if (digitalRead(RIGHT_BUTTON) == LOW) {
+    if (!RIGHT_BUTTON_FLAG) {
+      rightButton = frameTime;
+    }
+    buttonFlags = buttonFlags | (1 << RIGHT_BUTTON);
+  } else if (unsetFlags) {
+    buttonFlags = buttonFlags & ~(1 << RIGHT_BUTTON);
+  }
+
+  if (digitalRead(MIDDLE_BUTTON) == LOW) {
+    if (!MIDDLE_BUTTON_FLAG) {
+      upButton = frameTime;
+    }
+    buttonFlags = buttonFlags | (1 << MIDDLE_BUTTON);
+  } else if (unsetFlags) {
+    buttonFlags = buttonFlags & ~(1 << MIDDLE_BUTTON);
+  }
+}
+
+// TODO coop multithread?
+void Tetris::movePiece(bool moveDown) {
+  if (moveDown) {
+    position.y--;
+  }
+#ifndef DIGISPARK
+  if (!ALL_THREE_BUTTONS_HELD) {
+    if (SHOULD_MOVE_LEFT) {
+      if (!checkCollision({ -1, 0 })) {
+        --position.x;
+      }
+    } else if (SHOULD_MOVE_RIGHT) {
+      if (!checkCollision({ 1, 0 })) {
+        ++position.x;
+      }
     }
 
-    uint32_t delta = millis() - t1;
-    // 60fps lol
-    if (delta < 16) delay(16 - delta);
-    checkInputs();
+    if (SHOULD_ROTATE) {
+      rotatePiece();
+    }
   }
-}
-
-void Tetris::checkInputs() {
-  buttonFlags = buttonFlags |
-                ((digitalRead(LEFT_BUTTON) == LOW) << LEFT_BUTTON) |
-                ((digitalRead(RIGHT_BUTTON) == LOW) << RIGHT_BUTTON) |
-                ((digitalRead(MIDDLE_BUTTON) == LOW) << MIDDLE_BUTTON);
-}
-
-// TODO coop multithread
-void Tetris::movePiece() {
-  position.y--;
-#ifndef DIGISPARK
-  if ((buttonFlags & 0x01 << LEFT_BUTTON) && !checkCollision({ -1, 0 })) {
-    --position.x;
-  } else if ((buttonFlags & 0x01 << MIDDLE_BUTTON) && !checkCollision({ 1, 0 })) {
-    ++position.x;
-  }
-  if ((buttonFlags & 0x01 << RIGHT_BUTTON)) {
-    rotatePiece();
-  }
-  buttonFlags = 0;
 #endif
 }
 
@@ -159,9 +233,7 @@ void Tetris::spawnNewPiece() {
 void Tetris::assignRandomShape() {
   // static uint8_t index = 0;
   // assignShape(index++); // (rand()) % numShapes
-  // assignShape(((uint8_t)rand()) % numShapes);
-  // assignShape(8);
-  assignShape(((uint8_t) rand() & 0b00000111 - 1) << 2);
+  assignShape(((uint8_t)rand()) % numShapes);
 }
 
 void Tetris::assignShape(uint8_t index) {
@@ -194,12 +266,10 @@ void Tetris::checkForFullRows() {
     }
   }
 
-  // got a double buffer bug when rows are cleared. trying this
-  renderBoard(false, false);
-  if (extraScore % 2 == 1) {
-    // double render bug, I think
-    // this doesn't have to be renderBoard(true) because it can only be 1 or 3, in which case our envelope catches it
-  } else if (extraScore == 4) {
+  // get rid of double render problems
+  renderBoard(true, false);
+
+  if (extraScore == 4) {
     // extra score for getting a yahtzee or whatever
     extraScore++;
   }
@@ -208,16 +278,30 @@ void Tetris::checkForFullRows() {
 }
 
 void Tetris::rotatePiece() {
-  // we need to check the collision before we can see if the shape is good
-  // so we save the old id just in case
+  // bitshift division yeah yeah yeah
+  const uint8_t shapeQuotient = shapeIndex >> 2;
+  const uint8_t shapeRemainder = shapeIndex % 4;
+
   const uint8_t oldIndex = shapeIndex;
 
-  // shapes are arranged in groups of 4, 0-3 being the first
-  // we want to stay in the group we are in while advancing one place
-  assignShape((shapeIndex & 0b11111100) | ((shapeIndex+1) & 0b00000011));
+  assignShape(shapeQuotient * 4 + ((shapeRemainder + 1) % 4));
 
+  // if the new shape collides
   if (checkCollision({ 0, 0 })) {
-    assignShape(oldIndex);
+    // and moving it to the right doesn't help
+    if (checkCollision({1, 0})) {
+      // and moving it to the left doesn't help
+      if (checkCollision({-1, 0})) {
+        // switch back to the old shape
+        assignShape(oldIndex);
+      } else {
+        // left was clear, just move left
+        --position.x;
+      }
+    } else {
+      // right was clear, just move right
+      ++position.x;
+    }
   }
 }
 
@@ -274,10 +358,10 @@ void Tetris::addOrRemovePiece(bool add) {
 }
 
 // only call this function when the piece is in a good place
-void Tetris::renderBoard(bool wholeScreen, bool removePiece) {
+void Tetris::renderBoard(bool wholeScreen, bool addPiece) {
   // add piece to board
-  addOrRemovePiece(true);
-  wholeScreen = false;
+  if (addPiece) addOrRemovePiece(true);
+  // wholeScreen = false;
   // reset to bottom left
 
   // no way in hell am I importing std
@@ -287,7 +371,7 @@ void Tetris::renderBoard(bool wholeScreen, bool removePiece) {
 
   oled->setCursor(yMin*4,0);
 
-  for (uint8_t x = 0; x < (RENDER_SMALL ? 1 : BOARD_WIDTH/2); x++) {
+  for (uint8_t x = 0; x < (RENDER_SMALL ? 1 : BOARD_WIDTH >> 1); x++) {
     for (uint8_t y = yMin; y < yMax; y++) {
       // proceeding upwards, grab pixels 2x1 and write them to the screen
       uint8_t row = board[y];
@@ -310,10 +394,11 @@ void Tetris::renderBoard(bool wholeScreen, bool removePiece) {
     oled->setCursor(yMin*4,x+1);
   }
   if (RENDER_SMALL) delay(200);
-  if (removePiece) addOrRemovePiece(false);
+  if (addPiece) addOrRemovePiece(false);
+  oled->switchFrame();
 
   // debugging
-  oled->setCursor(112,0);
-  oled->print(shapeIndex);
-  oled->switchFrame();
+  // oled->setCursor(100,0);
+  // oled->print(frameTime - leftButton);
+  // oled->switchFrame();
 }
