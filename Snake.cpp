@@ -313,21 +313,22 @@ void Snake::checkForPause() {
 }
 
 void Snake::checkGameOver() {
-  // check head to tail collision
-  if (tailPosition.x == headPosition.x && tailPosition.y == headPosition.y) {
-    gameOver = true;
-  }
-
-  // check for body collision
-  if (checkForCollision(headPosition, false)) {
-    gameOver = true;
-  }
-
-
   // where are the < 0 checks you ask? well these are uints.
   // why are they uints you exclaim, we need to check if we go below zero!
   // this already does that. because it's unsigned the uint underflows
   if (headPosition.x >= BOARD_WIDTH || headPosition.y >= BOARD_HEIGHT) {
+    gameOver = true;
+    return;
+  }
+
+  // check head to tail collision
+  if (tailPosition.x == headPosition.x && tailPosition.y == headPosition.y) {
+    gameOver = true;
+    return;
+  }
+
+  // check for body collision
+  if (checkForCollision(headPosition, false)) {
     gameOver = true;
   }
 }
