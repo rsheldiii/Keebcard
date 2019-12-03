@@ -9,6 +9,51 @@
 // more randomness in pieces
 // figure out why the game resets at the end
 
+// button flags represent whether or not a button was pressed this tick
+volatile static uint8_t buttonFlags=0b11111111;
+// time of the current frame render
+static uint32_t frameTime = millis();
+// timestamp of when the button started being held
+static uint32_t leftButton = 0;
+static uint32_t rightButton = 0;
+static uint32_t upButton = 0;
+
+#define LEFT_BUTTON_FLAG (!(buttonFlags & (1 << LEFT_BUTTON)))
+#define RIGHT_BUTTON_FLAG (!(buttonFlags & (1 << RIGHT_BUTTON)))
+#define MIDDLE_BUTTON_FLAG (!(buttonFlags & (1 << MIDDLE_BUTTON)))
+
+ISR(PCINT0_vect)
+{
+    // first add any low pins to the register
+    buttonFlags &= PINB;
+
+    // then examine PINB and rectify which buttons are actually being held right now
+    if (!(PINB & (1 << LEFT_BUTTON))) {
+      if (!leftButton) {
+        leftButton = frameTime;
+      }
+    } else {
+      // TODO 0 as a sentinel value sometimes doesn't work
+      leftButton = 0;
+    }
+
+    if (!(PINB & (1 << MIDDLE_BUTTON))) {
+      if (!upButton) {
+        upButton = frameTime;
+      }
+    } else {
+      upButton = 0;
+    }
+
+    if (!(PINB & (1 << RIGHT_BUTTON))) {
+      if (!rightButton) {
+        rightButton = frameTime;
+      }
+    } else {
+      rightButton = 0;
+    }
+}
+
 const uint8_t BOARD_WIDTH = 8;
 const uint8_t BOARD_HEIGHT = 32;
 
@@ -17,21 +62,15 @@ const uint8_t STARTING_PIECE_HEIGHT = 34;
 
 const bool RENDER_SMALL = false;
 
-#define LEFT_BUTTON_FLAG (buttonFlags & (1 << LEFT_BUTTON))
-#define RIGHT_BUTTON_FLAG (buttonFlags & (1 << RIGHT_BUTTON))
-#define MIDDLE_BUTTON_FLAG (buttonFlags & (1 << MIDDLE_BUTTON))
-
-
-
 #define MILLIS_PER_TICK (125 - (score >> 2))
 
 // TODO can just be one macro with an input of which button to check
 // also predicating this on one frame not passing means we drop inputs if its going too slow. might want to rethink
 // TODO make millis_per_frame * 12 bit shift? check specification
 #define REPEAT_DELAY 250
-#define SHOULD_MOVE_LEFT (LEFT_BUTTON_FLAG && (leftButton == frameTime || (frameTime - leftButton > REPEAT_DELAY)))
-#define SHOULD_ROTATE (RIGHT_BUTTON_FLAG && (rightButton == frameTime || (frameTime - rightButton > REPEAT_DELAY)))
-#define SHOULD_MOVE_RIGHT (MIDDLE_BUTTON_FLAG && (upButton == frameTime || (frameTime - upButton > REPEAT_DELAY)))
+#define SHOULD_MOVE_LEFT (LEFT_BUTTON_FLAG || (leftButton && frameTime - leftButton > REPEAT_DELAY))
+#define SHOULD_ROTATE (RIGHT_BUTTON_FLAG || (rightButton && frameTime - rightButton > REPEAT_DELAY))
+#define SHOULD_MOVE_RIGHT (MIDDLE_BUTTON_FLAG || (upButton && frameTime - upButton > REPEAT_DELAY))
 
 
 #define ALL_THREE_BUTTONS_HELD (SHOULD_MOVE_LEFT && SHOULD_MOVE_RIGHT && SHOULD_ROTATE)  //  (buttonFlags == 0b00011010)
@@ -81,7 +120,7 @@ const Shape Tetris::shapes[28] PROGMEM = {
 };
 
 // static, so initialized to 0s anyways
-uint8_t Tetris::board[32] = {
+uint8_t Tetris::board[BOARD_HEIGHT] = {
   0x00, 0x00, 0x00, 0x00,0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00,0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00,0x00, 0x00, 0x00, 0x00,
@@ -92,8 +131,6 @@ Shape Tetris::shape = { { { 0, 0 }, { 0, 1 }, { 1, 0 }, { 1, 1 } } };
 // square 1
 // initialized elsewhere
 static uint8_t Tetris::shapeIndex = 1;
-
-static uint32_t Tetris::frameTime = millis();
 
 const uint8_t Tetris::numShapes = sizeof(Tetris::shapes) / sizeof(Tetris::shapes[0]); // 28
 
@@ -114,30 +151,31 @@ void Tetris::main() {
   assignRandomShape();
   uint32_t lastTickTime = millis();
 
-  while (true) {
-    // every frame needs a unique identifier to tie inputs to
-    frameTime = millis();
+  bool exit = false;
 
-    checkInputs(true);
+  while (!exit) {
 
     // if it's not a frame where we move downwards, don't even check for collision
     if ((millis() - lastTickTime > MILLIS_PER_TICK) || ALL_THREE_BUTTONS_HELD) {
       // hacky short circuit to incoporate immediate auto-down into the old event loop
       if (ALL_THREE_BUTTONS_HELD) {
-        // clear board of current piece, it'll probably be outside the envelope
+        // clear board of current piece, it'll probably be outside the envelope so do it twice
         renderBoard(false, false);
         renderBoard(false, false);
         while(!checkCollision({ 0, -1})) {
-          movePiece(true);
+          // movePiece has frameTime in it now. besides, this is more correct
+          position.y--;
         }
       }
 
       if(!checkCollision({ 0, -1})) {
         movePiece(true);
+        resetButtons();
         renderBoard();
       } else {
         // no collisions above the plane of play
         if (position.y >= BOARD_HEIGHT) break;
+        resetButtons();
         // re-add piece back in its new final resting place
         // from this point until we spawnNewPiece we're in a bit of a weird state, with the piece on the board. can't renderBoard(false, true) in this state or we will lose that
         addOrRemovePiece(true);
@@ -150,75 +188,83 @@ void Tetris::main() {
         checkForFullRows();
         // spawn a new piece
         spawnNewPiece();
+        // check for game over
+        if (checkCollision({ 0, -1})) {
+          exit = true;
+        }
       }
       // always reset lastTickTime after we trigger
       lastTickTime = millis();
     } else {
       movePiece(false);
+      resetButtons();
       renderBoard();
     }
   }
 }
 
-// we track deltas of how long the user has pressed a button.
-// we trigger one move immediately, then chain moves a few frames later
-// an obvious target to dry up. maybe with a macro I guess idk
-void Tetris::checkInputs(bool unsetFlags) {
-  if (digitalRead(LEFT_BUTTON) == LOW) {
-    if (!LEFT_BUTTON_FLAG) {
-      leftButton = frameTime;
-    }
-    buttonFlags = buttonFlags | (1 << LEFT_BUTTON);
-  } else if (unsetFlags) {
-    buttonFlags = buttonFlags & ~(1 << LEFT_BUTTON);
-  }
 
-  if (digitalRead(RIGHT_BUTTON) == LOW) {
-    if (!RIGHT_BUTTON_FLAG) {
-      rightButton = frameTime;
-    }
-    buttonFlags = buttonFlags | (1 << RIGHT_BUTTON);
-  } else if (unsetFlags) {
-    buttonFlags = buttonFlags & ~(1 << RIGHT_BUTTON);
-  }
+void Tetris::resetButtons() {
+  // buttonFlags needs to be reset to detect new button presses
+  // we do this here instead of in movePiece because it doesn't always get
+  // called by the main loop
+  buttonFlags=0b11111111;
 
-  if (digitalRead(MIDDLE_BUTTON) == LOW) {
-    if (!MIDDLE_BUTTON_FLAG) {
-      upButton = frameTime;
-    }
-    buttonFlags = buttonFlags | (1 << MIDDLE_BUTTON);
-  } else if (unsetFlags) {
-    buttonFlags = buttonFlags & ~(1 << MIDDLE_BUTTON);
-  }
+  // every frame needs a unique identifier to tie inputs to
+  // we change this right after we move things so we catch the maximum button
+  // presses
+  frameTime = millis();
 }
 
-// TODO coop multithread?
 void Tetris::movePiece(bool moveDown) {
   if (moveDown) {
     position.y--;
   }
-#ifndef DIGISPARK
-  if (!ALL_THREE_BUTTONS_HELD) {
-    if (SHOULD_MOVE_LEFT) {
-      if (!checkCollision({ -1, 0 })) {
-        --position.x;
-      }
-    } else if (SHOULD_MOVE_RIGHT) {
-      if (!checkCollision({ 1, 0 })) {
-        ++position.x;
-      }
-    }
 
-    if (SHOULD_ROTATE) {
-      rotatePiece();
+  if (SHOULD_MOVE_LEFT) {
+    if (!checkCollision({ -1, 0 })) {
+      --position.x;
     }
+  } else if (SHOULD_MOVE_RIGHT) {
+    if (!checkCollision({ 1, 0 })) {
+      ++position.x;
+    }
+  }else if (SHOULD_ROTATE) {
+    rotatePiece();
   }
-#endif
 }
+
+
+// TODO coop multithread?
+// void Tetris::movePiece(bool moveDown) {
+//   if (moveDown) {
+//     position.y--;
+//   }
+// #ifndef DIGISPARK
+//   if (!ALL_THREE_BUTTONS_HELD) {
+//     if (SHOULD_MOVE_LEFT) {
+//       if (!checkCollision({ -1, 0 })) {
+//         --position.x;
+//       }
+//     } else if (SHOULD_MOVE_RIGHT) {
+//       if (!checkCollision({ 1, 0 })) {
+//         ++position.x;
+//       }
+//     }
+//
+//     if (SHOULD_ROTATE) {
+//       rotatePiece();
+//     }
+//   }
+// #endif
+//
+//   // every frame needs a unique identifier to tie inputs to
+//   frameTime = millis();
+// }
 
 void Tetris::end() {
   // reset board in case
-  memset(board, 0x00, 32);
+  // memset(board, 0x00, 32);
 }
 
 void Tetris::spawnNewPiece() {
@@ -386,6 +432,7 @@ void Tetris::renderBoard(bool wholeScreen, bool addPiece) {
 
       for (uint8_t i = 0; i < (RENDER_SMALL ? 1 : 4); i++){
         oled->sendData((RENDER_SMALL ? row : block));
+        // cooperative multithreading amirite
       }
 
       oled->endData();
@@ -395,10 +442,11 @@ void Tetris::renderBoard(bool wholeScreen, bool addPiece) {
   }
   if (RENDER_SMALL) delay(200);
   if (addPiece) addOrRemovePiece(false);
-  oled->switchFrame();
 
   // debugging
   // oled->setCursor(100,0);
-  // oled->print(frameTime - leftButton);
+  // oled->print(SHOULD_MOVE_LEFT);
   // oled->switchFrame();
+
+  oled->switchFrame();
 }

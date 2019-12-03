@@ -19,14 +19,6 @@ typedef struct {
 class Tetris {
   Position position;
   uint8_t score = 0;
-  uint8_t frame = 0;
-  uint8_t framesPerTick = 10;
-
-  uint8_t buttonFlags = 0;
-  uint32_t leftButton = 0;
-  uint32_t rightButton = 0;
-  uint32_t upButton = 0;
-
 
   SSD1306Device* oled;
   static uint8_t board[32];
@@ -36,8 +28,6 @@ class Tetris {
   static Shape shape;
   // required to keep track of rotations
   static uint8_t shapeIndex;
-  // time of the current frame render
-  static uint32_t frameTime;
 
 	public:
     Tetris(SSD1306Device* _oled);
@@ -54,6 +44,7 @@ class Tetris {
     void goLeft(void);
     void goRight(void);
     void main(void);
+    void resetButtons(void);
     void movePiece(bool moveDown);
     void renderBoard(bool wholeScreen = false, bool addPiece = true);
     void rotatePiece(void);
