@@ -14,6 +14,10 @@ The KeebCard is centered around an SSD1306-powered 128x32 monochromatic display 
 
 At the base of this project (currently) is the code that runs on the machine. I don't normally program in systems-level languages, so it's a little rough. You can change what program is flashed by messing with the define at the top of KeebCard.ino.
 
+## Dependencies
+
+All dependencies can be installed via the Arduino library manager save the Entropy library, which is here: https://github.com/pmjdebruijn/Arduino-Entropy-Library
+
 # Flashing
 
 The KeebCard code is currently compiled and flashed with an ISP programmer via the Arduino suite. [check out the flashing tutorial here](https://www.youtube.com/watch?v=2kj1aFIwNek)

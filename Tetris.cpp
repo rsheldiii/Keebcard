@@ -1,14 +1,11 @@
 #include "settings.h"
 #include "Tetris.h"
+#include "Entropy.h"
 
 // TODO
-// auto-down
-// correct scoring
-// score determines your level
-// level determines your speed
 // more randomness in pieces
-// figure out why the game resets at the end
 
+// I just switched to interrupt-driven inputs so it's a little messy
 // button flags represent whether or not a button was pressed this tick
 volatile static uint8_t buttonFlags=0b11111111;
 // time of the current frame render
@@ -22,6 +19,7 @@ static uint32_t upButton = 0;
 #define RIGHT_BUTTON_FLAG (!(buttonFlags & (1 << RIGHT_BUTTON)))
 #define MIDDLE_BUTTON_FLAG (!(buttonFlags & (1 << MIDDLE_BUTTON)))
 
+// interrupt script
 ISR(PCINT0_vect)
 {
     // first add any low pins to the register
@@ -82,7 +80,8 @@ const bool RENDER_SMALL = false;
 // lose that axis rotation. I need to reorder so that the first or last
 // pixel is always the lowest pixel, so that I may use that in my program
 // to spawn them all at the same height
-const Shape Tetris::shapes[28] PROGMEM = {
+const uint8_t uniqueShapes = 7;
+const Shape Tetris::shapes[uniqueShapes * 4] PROGMEM = {
   { { { 0, 0 }, { 0, 1 }, { 1, 0 }, { 1, 1 } } }, // square 1
   { { { 0, 0 }, { 0, 1 }, { 1, 0 }, { 1, 1 } } }, // square 2
   { { { 0, 0 }, { 0, 1 }, { 1, 0 }, { 1, 1 } } }, // square 3
@@ -234,34 +233,6 @@ void Tetris::movePiece(bool moveDown) {
   }
 }
 
-
-// TODO coop multithread?
-// void Tetris::movePiece(bool moveDown) {
-//   if (moveDown) {
-//     position.y--;
-//   }
-// #ifndef DIGISPARK
-//   if (!ALL_THREE_BUTTONS_HELD) {
-//     if (SHOULD_MOVE_LEFT) {
-//       if (!checkCollision({ -1, 0 })) {
-//         --position.x;
-//       }
-//     } else if (SHOULD_MOVE_RIGHT) {
-//       if (!checkCollision({ 1, 0 })) {
-//         ++position.x;
-//       }
-//     }
-//
-//     if (SHOULD_ROTATE) {
-//       rotatePiece();
-//     }
-//   }
-// #endif
-//
-//   // every frame needs a unique identifier to tie inputs to
-//   frameTime = millis();
-// }
-
 void Tetris::end() {
   // reset board in case
   // memset(board, 0x00, 32);
@@ -276,13 +247,57 @@ void Tetris::spawnNewPiece() {
   position.y = STARTING_PIECE_HEIGHT;
 }
 
+// regular tetris supposedly generates the next shapes 7 at a time
+// but uh, this works too
 void Tetris::assignRandomShape() {
+  static bool shapesAlreadyUsed[uniqueShapes] = {false, false, false, false, false, false, false};
+
+  // count how many shapes we haven't used this "bag" yet
+  uint8_t spotsLeft = 0;
+  for(uint8_t i = 0; i < uniqueShapes; i++) {
+    if (!shapesAlreadyUsed[i]) {
+      spotsLeft++;
+    }
+  }
+
+  // if there are none, reset
+  if (spotsLeft == 0) {
+    for(uint8_t j = 0; j < uniqueShapes; j++) {
+      shapesAlreadyUsed[j] = false;
+    }
+    spotsLeft = 7;
+  }
+
+  // find the spot we want to take
+  uint8_t spot = Entropy.random(spotsLeft);
+
+  // and find the actual shape in the array
+  int8_t openSpotCounter = -1;
+  uint8_t k = 0;
+  for (k; k < uniqueShapes; k++) {
+    if (shapesAlreadyUsed[k]) {
+      continue;
+    }
+
+    openSpotCounter++;
+
+    // >= for 0th case
+    if (openSpotCounter == spot) {
+      break;
+    }
+  }
+
+  shapesAlreadyUsed[k] = true;
+
+  assignShape((k << 2));
+
   // static uint8_t index = 0;
   // assignShape(index++); // (rand()) % numShapes
-  assignShape(((uint8_t)rand()) % numShapes);
+  // assignShape(((uint8_t)rand()) % numShapes);
 }
 
 void Tetris::assignShape(uint8_t index) {
+  if (index > 28) score += 13;
   shapeIndex = index;
   // load shape from progmem into ram since we need it everywhere
   memcpy_P(&shape, &shapes[shapeIndex], sizeof(Shape));
@@ -366,7 +381,8 @@ bool Tetris::checkCollision(Position delta) {
     // the only exception is rotation checks, which just want to check
     // if the new rotated piece is occupying the same space as something.
     // hence < 0 instead of <= 0 for the 0 checks
-    if (((int8_t)newPosition.y < 0) || ((int8_t)newPosition.x < 0) || (newPosition.x >= BOARD_WIDTH)) {
+    if (((int8_t)newPosition.y < 0 || ((int8_t)newPosition.x < 0) || (newPosition.x >= BOARD_WIDTH))) {
+      // score += 12;
       return true;
     }
 

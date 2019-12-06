@@ -1,5 +1,6 @@
  #include <TinyWireM.h>
 #include <Tiny4kOLED.h>
+#include <Entropy.h>
 #include "settings.h"
 
 
@@ -52,6 +53,8 @@ void universal_setup() {
   // seed random number with value from the analog pin
   // it doesn't vary all that much, but it helps
   srand(analogRead(MIDDLE_BUTTON));
+  // here's the good stuff, Entropy based off clock jitter
+  Entropy.initialize();
 
   pinMode(LEFT_BUTTON, INPUT);
   pinMode(RIGHT_BUTTON, INPUT);
