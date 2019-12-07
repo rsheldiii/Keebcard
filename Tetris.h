@@ -19,6 +19,8 @@ typedef struct {
 class Tetris {
   Position position;
   uint8_t score = 0;
+  uint16_t lines = 0;
+  uint8_t level = 0;
 
   SSD1306Device* oled;
   static uint8_t board[32];
@@ -31,8 +33,11 @@ class Tetris {
 
 	public:
     Tetris(SSD1306Device* _oled);
-		uint8_t run(void);
+		uint32_t run(void);
   private:
+    void incrementLines(void);
+    void incrementScore(uint8_t lines);
+    uint16_t getMillisPerTick(void);
     bool checkCollision(Position delta);
     void addOrRemovePiece(bool add);
     void advancePiece(void);

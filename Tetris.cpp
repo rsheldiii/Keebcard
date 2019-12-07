@@ -62,8 +62,6 @@ const uint8_t STARTING_PIECE_HEIGHT = 34;
 
 const bool RENDER_SMALL = false;
 
-#define MILLIS_PER_TICK (125 - (score >> 2))
-
 // TODO can just be one macro with an input of which button to check
 // also predicating this on one frame not passing means we drop inputs if its going too slow. might want to rethink
 // TODO make millis_per_frame * 12 bit shift? check specification
@@ -141,7 +139,7 @@ Tetris::Tetris(SSD1306Device* _oled) {
   position = { STARTING_PIECE_WIDTH, STARTING_PIECE_HEIGHT };
 }
 
-uint8_t Tetris::run() {
+uint32_t Tetris::run() {
   main();
   end();
   return score*10;
@@ -155,8 +153,10 @@ void Tetris::main() {
 
   while (!exit) {
 
+    uint16_t millis_per_tick = getMillisPerTick();
+
     // if it's not a frame where we move downwards, don't even check for collision
-    if ((millis() - lastTickTime > MILLIS_PER_TICK) || ALL_THREE_BUTTONS_HELD) {
+    if ((millis() - lastTickTime > millis_per_tick) || ALL_THREE_BUTTONS_HELD) {
       // hacky short circuit to incoporate immediate auto-down into the old event loop
       if (ALL_THREE_BUTTONS_HELD) {
         // clear board of current piece, it'll probably be outside the envelope so do it twice
@@ -203,6 +203,17 @@ void Tetris::main() {
   }
 }
 
+// close to original
+uint16_t Tetris::getMillisPerTick() {
+  if (level < 9) {
+    return 800 - level * 80;
+  } else if (level < 28) {
+    return 100 - (level - 9) * 5;
+  } else {
+    return 1;
+  }
+}
+
 
 void Tetris::resetButtons() {
   // buttonFlags needs to be reset to detect new button presses
@@ -234,34 +245,6 @@ void Tetris::movePiece(bool moveDown) {
   }
 }
 
-
-// TODO coop multithread?
-// void Tetris::movePiece(bool moveDown) {
-//   if (moveDown) {
-//     position.y--;
-//   }
-// #ifndef DIGISPARK
-//   if (!ALL_THREE_BUTTONS_HELD) {
-//     if (SHOULD_MOVE_LEFT) {
-//       if (!checkCollision({ -1, 0 })) {
-//         --position.x;
-//       }
-//     } else if (SHOULD_MOVE_RIGHT) {
-//       if (!checkCollision({ 1, 0 })) {
-//         ++position.x;
-//       }
-//     }
-//
-//     if (SHOULD_ROTATE) {
-//       rotatePiece();
-//     }
-//   }
-// #endif
-//
-//   // every frame needs a unique identifier to tie inputs to
-//   frameTime = millis();
-// }
-
 void Tetris::end() {
   // reset board in case
   // memset(board, 0x00, 32);
@@ -290,11 +273,14 @@ void Tetris::assignShape(uint8_t index) {
 
 // really
 void Tetris::checkForFullRows() {
-  uint8_t extraScore = 0;
+  // to calculate the score
+  uint8_t linesCleared = 0;
   uint8_t y = (int8_t)(position.y) - 3 < 0 ? 0 : position.y - 3;
   while(y < BOARD_HEIGHT) {
     if (board[y] == 0xFF) {
-      extraScore++;
+      linesCleared++;
+      // to calculate the level
+      incrementLines();
       for (uint8_t yy = y; yy < BOARD_HEIGHT - 1; yy++) {
         board[yy] = board[yy+1];
       }
@@ -314,13 +300,35 @@ void Tetris::checkForFullRows() {
 
   // get rid of double render problems
   renderBoard(true, false);
+  incrementScore(linesCleared);
+}
 
-  if (extraScore == 4) {
-    // extra score for getting a yahtzee or whatever
-    extraScore++;
+void Tetris::incrementScore(uint8_t lines) {
+  uint8_t extraScore = 0;
+
+  switch(lines) {
+    case 1:
+      extraScore = 4;
+      break;
+    case 2:
+      extraScore = 10;
+      break;
+    case 3:
+      extraScore = 30;
+      break;
+    case 4:
+      extraScore = 120;
   }
 
-  score += extraScore;
+  score += extraScore * (level + 1);
+}
+
+void Tetris::incrementLines() {
+  lines++;
+  if (lines == (level + 1) * 10) {
+    lines = 0;
+    level++;
+  }
 }
 
 void Tetris::rotatePiece() {
