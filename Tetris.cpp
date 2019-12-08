@@ -2,8 +2,10 @@
 #include "Tetris.h"
 #include "Entropy.h"
 
-// TODO
-// more randomness in pieces
+// using the NES game as a guidepost is a little slow, this speeds it up
+const bool SKIP_A_BIT_BROTHER=true;
+
+const uint8_t DEBOUNCE_VALUE = 10;
 
 // I just switched to interrupt-driven inputs so it's a little messy
 // button flags represent whether or not a button was pressed this tick
@@ -22,13 +24,23 @@ static uint32_t upButton = 0;
 // interrupt script
 ISR(PCINT0_vect)
 {
+    // static vars are only initialized once
+    static uint16_t debounceLeft = millis();
+    static uint16_t debounceRight = millis();
+    static uint16_t debounceMiddle = millis();
+
+    const uint16_t now = millis();
+
     // first add any low pins to the register
     buttonFlags &= PINB;
 
     // then examine PINB and rectify which buttons are actually being held right now
     if (!(PINB & (1 << LEFT_BUTTON))) {
-      if (!leftButton) {
-        leftButton = frameTime;
+      if (now - debounceLeft > DEBOUNCE_VALUE) {
+        debounceLeft = now;
+        if (!leftButton) {
+          leftButton = frameTime;
+        }  
       }
     } else {
       // TODO 0 as a sentinel value sometimes doesn't work
@@ -36,16 +48,22 @@ ISR(PCINT0_vect)
     }
 
     if (!(PINB & (1 << MIDDLE_BUTTON))) {
-      if (!upButton) {
-        upButton = frameTime;
+      if (now - debounceMiddle > DEBOUNCE_VALUE) {
+        debounceMiddle = now;
+        if (!upButton) {
+          upButton = frameTime;
+        }
       }
     } else {
       upButton = 0;
     }
 
     if (!(PINB & (1 << RIGHT_BUTTON))) {
-      if (!rightButton) {
-        rightButton = frameTime;
+      if (now - debounceRight > DEBOUNCE_VALUE) {
+        debounceRight = now;
+        if (!rightButton) {
+          rightButton = frameTime;
+        }
       }
     } else {
       rightButton = 0;
@@ -172,9 +190,9 @@ void Tetris::main() {
         resetButtons();
         renderBoard();
       } else {
+        resetButtons();
         // no collisions above the plane of play
         if (position.y >= BOARD_HEIGHT) break;
-        resetButtons();
         // re-add piece back in its new final resting place
         // from this point until we spawnNewPiece we're in a bit of a weird state, with the piece on the board. can't renderBoard(false, true) in this state or we will lose that
         addOrRemovePiece(true);
@@ -202,7 +220,7 @@ void Tetris::main() {
   }
 }
 
-// close to original
+// close to original NES implementation
 uint16_t Tetris::getMillisPerTick() {
   if (level < 9) {
     return 800 - level * 80;
@@ -216,7 +234,7 @@ uint16_t Tetris::getMillisPerTick() {
 
 void Tetris::resetButtons() {
   // buttonFlags needs to be reset to detect new button presses
-  // we do this here instead of in movePiece because it doesn't always get
+  // we do this here instead of in movePiece because that doesn't always get
   // called by the main loop
   buttonFlags=0b11111111;
 
@@ -239,7 +257,10 @@ void Tetris::movePiece(bool moveDown) {
     if (!checkCollision({ 1, 0 })) {
       ++position.x;
     }
-  }else if (SHOULD_ROTATE) {
+  }
+
+  // you should always be able to rotate, even if you click other buttons
+  if (SHOULD_ROTATE) {
     rotatePiece();
   }
 }
@@ -368,7 +389,9 @@ void Tetris::incrementScore(uint8_t lines) {
 
 void Tetris::incrementLines() {
   lines++;
-  if (lines == (level + 1) * 10) {
+  const uint8_t levelMultiplier = SKIP_A_BIT_BROTHER ? 5 : 10;
+
+  if (lines >= (level + 1) * levelMultiplier) {
     lines = 0;
     level++;
   }
