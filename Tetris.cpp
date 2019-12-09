@@ -40,7 +40,7 @@ ISR(PCINT0_vect)
         debounceLeft = now;
         if (!leftButton) {
           leftButton = frameTime;
-        }  
+        }
       }
     } else {
       // TODO 0 as a sentinel value sometimes doesn't work

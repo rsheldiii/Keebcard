@@ -18,7 +18,7 @@ typedef struct {
 
 class Tetris {
   Position position;
-  uint8_t score = 0;
+  uint32_t score = 0;
   uint16_t lines = 0;
   uint8_t level = 0;
 

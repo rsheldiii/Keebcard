@@ -80,8 +80,7 @@ void setup_game(){
     sei();                 // enables interrupts
 
     Tetris tetris(&oled);
-    uint8_t score = tetris.run();
-    gameOver(score);
+    gameOver(tetris.run());
     oled.switchFrame();
   #elif defined(CONWAY)
     Conway conway(&oled);
@@ -119,7 +118,7 @@ void loop() {
   }
 }
 
-void gameOver(uint8_t score) {
+void gameOver(uint32_t score) {
     oled.clear();
     oled.setCursor(0,0);
     oled.print(F("Game Over!"));
