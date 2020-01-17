@@ -18,6 +18,8 @@ At the base of this project (currently) is the code that runs on the machine. I 
 
 All dependencies can be installed via the Arduino library manager save the Entropy library, which is here: https://github.com/pmjdebruijn/Arduino-Entropy-Library
 
+NOTE: currently the Entropy library pushes Snake over the edge in regards to memory requirements. Due to how the Arduino suite compiles files, if you want to flash Snake you have to remove any references to Entropy in all files - then it'll work. I'll come up with a fix for this. Snake doesn't even use Entropy, it just gets pulled in regardless.
+
 # Flashing
 
 The KeebCard code is currently compiled and flashed with an ISP programmer via the Arduino suite. [check out the flashing tutorial here](https://www.youtube.com/watch?v=2kj1aFIwNek)
