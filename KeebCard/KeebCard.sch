@@ -59,7 +59,7 @@ F 3 "" H 4650 4450 50  0001 C CNN
 	0    -1   -1   0   
 $EndComp
 $Comp
-L KeebCard-rescue:ATTINY85-20SU-bobness_card U1
+L KeebCard:ATTINY85-20SU U1
 U 1 1 5AF41EEF
 P 7850 4800
 F 0 "U1" H 6700 5200 50  0000 C CNN
@@ -113,7 +113,7 @@ PB3
 Text Label 6400 5050 2    60   ~ 0
 PB5
 $Comp
-L KeebCard-rescue:SSD1306-128x32-bobness_card DS1
+L KeebCard:SSD1306-128x32 DS1
 U 1 1 5AF43225
 P 5650 6500
 F 0 "DS1" H 5700 6500 60  0000 C CNN

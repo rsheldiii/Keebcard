@@ -1,5 +1,4 @@
 (sym_lib_table
-  (lib (name bobness_card)(type Legacy)(uri ${KIPRJMOD}/bobness_card.lib)(options "")(descr ""))
-  (lib (name KeebCard-rescue)(type Legacy)(uri ${KIPRJMOD}/KeebCard-rescue.lib)(options "")(descr ""))
-  (lib (name KeebCard)(type Legacy)(uri C:/Users/Dday/Documents/Documents/Arduino/BusinessCard/Keebcard/KeebCard/KeebCard.lib)(options "")(descr ""))
+  (lib (name KeebCard-rescue)(type Legacy)(uri ${KIPRJMOD}/KeebCard-rescue.lib)(options "")(descr "")(disabled))
+  (lib (name KeebCard)(type Legacy)(uri ${KIPRJMOD}/KeebCard.lib)(options "")(descr ""))
 )
