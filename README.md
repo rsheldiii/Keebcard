@@ -24,6 +24,10 @@ NOTE: currently the Entropy library pushes Snake over the edge in regards to mem
 
 The KeebCard code is currently compiled and flashed with an ISP programmer via the Arduino suite. [check out the flashing tutorial here](https://www.youtube.com/watch?v=2kj1aFIwNek)
 
+# Troubleshooting
+
+Having successfully hand-soldered around 30 of these now, I put the two most common problems people encounter in [this video](https://www.youtube.com/watch?v=W7IxT4Zf5qs). If you're having issues take a look!
+
 # Fabbing
 
 If you want to make your own run of KeebCard boards, check out the GERBERS directory. These are gerbers produced by the standard settings in Kicad. They are confirmed to work with JLCPCB, but probably work just fine at a bunch of other board shops.
