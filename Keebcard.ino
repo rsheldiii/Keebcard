@@ -1,6 +1,6 @@
  #include <TinyWireM.h>
 #include <Tiny4kOLED.h>
-#include <Entropy.h>
+// #include <Entropy.h>
 #include "settings.h"
 
 
@@ -54,7 +54,7 @@ void universal_setup() {
   // it doesn't vary all that much, but it helps
   srand(analogRead(MIDDLE_BUTTON));
   // here's the good stuff, Entropy based off clock jitter
-  Entropy.initialize();
+  // Entropy.initialize();
 
   pinMode(LEFT_BUTTON, INPUT);
   pinMode(RIGHT_BUTTON, INPUT);
@@ -83,6 +83,7 @@ void setup_game(){
     gameOver(tetris.run());
     oled.switchFrame();
   #elif defined(CONWAY)
+    oled.setMemoryAddressingMode(0); // TODO prolly don't need this
     Conway conway(&oled);
     conway.run();
   #elif defined(BUSINESS_CARD)

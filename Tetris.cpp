@@ -1,6 +1,6 @@
 #include "settings.h"
 #include "Tetris.h"
-#include "Entropy.h"
+// #include "Entropy.h"
 
 // using the NES game as a guidepost is a little slow, this speeds it up
 const bool SKIP_A_BIT_BROTHER=true;
@@ -301,7 +301,10 @@ void Tetris::assignRandomShape() {
   }
 
   // find the spot we want to take
-  uint8_t spot = Entropy.random(spotsLeft);
+  // Entropy is more accurate but causing issues for other games due to Arduino's
+  // code loading magic
+  // uint8_t spot = Entropy.random(spotsLeft);
+  uint8_t spot = rand() % spotsLeft;
 
   // and find the actual shape in the array
   int8_t openSpotCounter = -1;
