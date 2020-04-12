@@ -43,6 +43,6 @@ class Conway {
     void updateCell(UPosition position);
     uint8_t getLivingNeighbors(UPosition position);
     uint8_t getCell(UPosition position);
-    uint8_t positionToRowIndex(UPosition position);
+    uint16_t positionToRowIndex(UPosition position);
     void setCell(UPosition position, uint8_t value);
 };
