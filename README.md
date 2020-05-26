@@ -6,33 +6,33 @@ This is the home of the KeebCard project. Originally designed as a business card
 
 The KeebCard is centered around an SSD1306-powered 128x32 monochromatic display and an ATTINY85-10SU. The code uses the wonderful [Tiny4kOLED library](https://github.com/datacute/Tiny4kOLED) to communicate with the screen via i2c. With 8 kilobytes of program space and 512 bytes of RAM, it's a fun challenge getting anything to run on this thing!
 
-# Assembly
+## DIY Assembly
 
-## DIY
-
-[Head here for the current assembly video](https://www.youtube.com/watch?v=mJQla--lSXY). I may reshoot this, we'll see
+[Head here for the current DIY assembly video](https://www.youtube.com/watch?v=mJQla--lSXY). I may reshoot this, we'll see
 
 ## Case Assembly (Button and LowPro)
 
 Watch [this quick video](https://www.youtube.com/watch?v=yVERQCmgONw) if you want to know how to use the cases! Especially important for button cases, they can be tricky
 
-# Code
+# Flashing/Code
 
-At the base of this project (currently) is the code that runs on the machine. I don't normally program in systems-level languages, so it's a little rough. You can change what program is flashed by messing with the define at the top of KeebCard.ino.
-
-## Dependencies
-
-All dependencies can be installed via the Arduino library manager save the Entropy library, which is here: https://github.com/pmjdebruijn/Arduino-Entropy-Library
-
-NOTE: currently the Entropy library pushes Snake over the edge in regards to memory requirements. Due to how the Arduino suite compiles files, if you want to flash Snake you have to remove any references to Entropy in all files - then it'll work. I'll come up with a fix for this. Snake doesn't even use Entropy, it just gets pulled in regardless.
-
-# Flashing
+At the base of this project (currently) is the code that runs on the machine, you can `git clone` or download zip and open the KeebCard.ino file in Arduino. I don't normally program in C++, so it's a little rough. You can change what program is flashed by changing the define at the top of KeebCard.ino.
 
 The KeebCard code is currently compiled and flashed with an ISP programmer via the Arduino suite. [check out the flashing tutorial here](https://www.youtube.com/watch?v=2kj1aFIwNek)
 
+### A note about dependencies
+
+Currently, all dependencies can be installed via the Arduino library manager, check out the flashing tutorial
+
+There used to be a dependency on the [Arduino Entropy Library](https://github.com/pmjdebruijn/Arduino-Entropy-Library) that needed to be downloaded separately, but it was causing memory errors due to how the Arduino suite includes files. i'll be breaking programs out into separate folders eventually, after which we'll reinstate the entropy library.
+
+# Flashing your own programs
+
+I made a guide on how Conway's Game of Life works on the KeebCard, which will hopefully help you write your own programs! you can check that out [here](https://www.youtube.com/watch?v=X3y9NNHXf2Y)
+
 # Troubleshooting
 
-Having successfully hand-soldered around 30 of these now, I put the two most common problems people encounter in [this video](https://www.youtube.com/watch?v=W7IxT4Zf5qs). If you're having issues take a look!
+Having successfully hand-soldered >30 of these now, I put the two most common problems people encounter in [this video](https://www.youtube.com/watch?v=W7IxT4Zf5qs). If you're having issues take a look!
 
 # Fabbing
 
@@ -54,7 +54,6 @@ All parts are available from Mouser save the screen
 # Modifying
 
 If you want to modify the design, check out the KeebCard directory, which houses the original Kicad project.  
-
 
 # KeebCard in media
 
