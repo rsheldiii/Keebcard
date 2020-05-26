@@ -8,7 +8,13 @@ The KeebCard is centered around an SSD1306-powered 128x32 monochromatic display 
 
 # Assembly
 
+## DIY
+
 [Head here for the current assembly video](https://www.youtube.com/watch?v=mJQla--lSXY). I may reshoot this, we'll see
+
+## Case Assembly (Button and LowPro)
+
+Watch [this quick video](https://www.youtube.com/watch?v=yVERQCmgONw) if you want to know how to use the cases! Especially important for button cases, they can be tricky
 
 # Code
 
