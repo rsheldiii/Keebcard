@@ -22,9 +22,9 @@ The KeebCard code is currently compiled and flashed with an ISP programmer via t
 
 ### A note about dependencies
 
-Currently, all dependencies can be installed via the Arduino library manager, check out the flashing tutorial
+Currently, all dependencies can be installed via the Arduino library manager, check out the flashing tutorial.
 
-There used to be a dependency on the [Arduino Entropy Library](https://github.com/pmjdebruijn/Arduino-Entropy-Library) that needed to be downloaded separately, but it was causing memory errors due to how the Arduino suite includes files. i'll be breaking programs out into separate folders eventually, after which we'll reinstate the entropy library.
+There used to be a dependency on the [Arduino Entropy Library](https://github.com/pmjdebruijn/Arduino-Entropy-Library) that needed to be downloaded separately, but it was causing memory errors due to how the Arduino suite includes files. I'll be breaking programs out into separate folders eventually, after which we'll reinstate the entropy library.
 
 # Flashing your own programs
 
