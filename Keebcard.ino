@@ -81,7 +81,7 @@ void setup_game(){
 
     Tetris tetris(&oled);
     gameOver(tetris.run());
-    oled.switchFrame();
+    //oled.switchFrame();
   #elif defined(CONWAY)
     oled.setMemoryAddressingMode(0); // TODO prolly don't need this
     Conway conway(&oled);
