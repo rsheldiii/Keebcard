@@ -7,8 +7,8 @@
 // PROGRAM DEFINES =============================================================
 
 // uncomment whichever one you want
-// #define BUSINESS_CARD
-#define TETRIS
+#define BUSINESS_CARD
+//#define TETRIS
 // #define CONWAY
 // #define PONG
 // #define SNAKE
