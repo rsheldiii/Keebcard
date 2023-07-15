@@ -8,7 +8,7 @@ The KeebCard is centered around an SSD1306-powered 128x32 monochromatic display 
 
 # OpenSaucers
 
-thanks for supporting TheKeebProject! check out the DIY assembly video below. the amount of components indicates what they are; there is one capacitor, two i2c resistors (on the back) and four pull-up resistors. if you have any trouble get in touch!
+OpenSauce attendees, thanks for supporting TheKeebProject! Check out the DIY assembly video below. The amount of components present in the bag indicates what they are; there is one capacitor, two i2c resistors (on the back) and four pull-up resistors. The assembly video should go over everything, if you have any trouble get in touch!
 
 
 ## DIY Assembly
