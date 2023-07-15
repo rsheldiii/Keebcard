@@ -6,9 +6,14 @@ This is the home of the KeebCard project. Originally designed as a business card
 
 The KeebCard is centered around an SSD1306-powered 128x32 monochromatic display and an ATTINY85-10SU. The code uses the wonderful [Tiny4kOLED library](https://github.com/datacute/Tiny4kOLED) to communicate with the screen via i2c. With 8 kilobytes of program space and 512 bytes of RAM, it's a fun challenge getting anything to run on this thing!
 
+# OpenSaucers
+
+thanks for supporting TheKeebProject! check out the DIY assembly video below. the amount of components indicates what they are; there is one capacitor, two i2c resistors (on the back) and four pull-up resistors. if you have any trouble get in touch!
+
+
 ## DIY Assembly
 
-[Head here for the current DIY assembly video](https://www.youtube.com/watch?v=mJQla--lSXY). I may reshoot this, we'll see
+[Head here for the current DIY assembly video](https://www.youtube.com/watch?v=mJQla--lSXY).
 
 ## Case Assembly (Button and LowPro)
 
