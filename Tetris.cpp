@@ -1,11 +1,13 @@
 #include "settings.h"
 #include "Tetris.h"
-// #include "Entropy.h"
+//#include "Entropy.h"
+
+#define IMMEDIATE_DOWN true
 
 // using the NES game as a guidepost is a little slow, this speeds it up
-const bool SKIP_A_BIT_BROTHER=true;
+#define SKIP_A_BIT_BROTHER true
 
-const uint8_t DEBOUNCE_VALUE = 10;
+const uint8_t DEBOUNCE_VALUE = 80;
 
 // I just switched to interrupt-driven inputs so it's a little messy
 // button flags represent whether or not a button was pressed this tick
@@ -17,57 +19,75 @@ static uint32_t leftButton = 0;
 static uint32_t rightButton = 0;
 static uint32_t upButton = 0;
 
+// debounce values for each button
+static uint32_t debounceLeft = 0;
+static uint32_t debounceRight = 0;
+static uint32_t debounceMiddle = 0;
+
+// the flags do not clear for an entire frame
 #define LEFT_BUTTON_FLAG (!(buttonFlags & (1 << LEFT_BUTTON)))
 #define RIGHT_BUTTON_FLAG (!(buttonFlags & (1 << RIGHT_BUTTON)))
 #define MIDDLE_BUTTON_FLAG (!(buttonFlags & (1 << MIDDLE_BUTTON)))
 
-// interrupt script
-ISR(PCINT0_vect)
-{
-    // static vars are only initialized once
-    static uint16_t debounceLeft = millis();
-    static uint16_t debounceRight = millis();
-    static uint16_t debounceMiddle = millis();
+// these represent the actual state of the buttons at any point in time
+#define LEFT_BUTTON_IS_BEING_PRESSED (!(PINB & (1 << LEFT_BUTTON)))
+#define MIDDLE_BUTTON_IS_BEING_PRESSED (!(PINB & (1 << MIDDLE_BUTTON)))
+#define RIGHT_BUTTON_IS_BEING_PRESSED (!(PINB & (1 << RIGHT_BUTTON)))
 
-    const uint16_t now = millis();
+void checkButton(uint8_t button) {
+  
+}
+
+void checkButtons() {
+    // const uint16_t now = millis();
 
     // first add any low pins to the register
     buttonFlags &= PINB;
 
     // then examine PINB and rectify which buttons are actually being held right now
-    if (!(PINB & (1 << LEFT_BUTTON))) {
-      if (now - debounceLeft > DEBOUNCE_VALUE) {
-        debounceLeft = now;
-        if (!leftButton) {
-          leftButton = frameTime;
-        }
+    if (LEFT_BUTTON_FLAG) {
+      // we have to have this guard because other buttons could trigger this
+      // function while we are still holding left, and we don't want to reset the timer
+      if (leftButton == 0 && ((millis() - debounceLeft) > DEBOUNCE_VALUE)) {
+        debounceLeft = millis();
+        leftButton = frameTime;
       }
     } else {
-      // TODO 0 as a sentinel value sometimes doesn't work
-      leftButton = 0;
+      if (leftButton != frameTime && leftButton != 0) {
+        debounceLeft = millis();
+        leftButton = 0;
+      }
     }
 
-    if (!(PINB & (1 << MIDDLE_BUTTON))) {
-      if (now - debounceMiddle > DEBOUNCE_VALUE) {
-        debounceMiddle = now;
-        if (!upButton) {
-          upButton = frameTime;
-        }
+    if (MIDDLE_BUTTON_FLAG) {
+      if (upButton == 0 && ((millis() - debounceMiddle) > DEBOUNCE_VALUE)) {
+        debounceMiddle = millis();
+        upButton = frameTime;
       }
     } else {
-      upButton = 0;
+      if (upButton != frameTime && upButton != 0) {
+        debounceMiddle = millis();
+        upButton = 0;
+      }
     }
 
-    if (!(PINB & (1 << RIGHT_BUTTON))) {
-      if (now - debounceRight > DEBOUNCE_VALUE) {
-        debounceRight = now;
-        if (!rightButton) {
-          rightButton = frameTime;
-        }
+    if (RIGHT_BUTTON_FLAG) {
+      if (rightButton == 0 && ((millis() - debounceRight) > DEBOUNCE_VALUE)) {
+        debounceRight = millis();
+        rightButton = frameTime;
       }
     } else {
-      rightButton = 0;
+      if (rightButton != frameTime && rightButton != 0) {
+        debounceRight = millis();
+        rightButton = 0;
+      }
     }
+}
+
+// interrupt script
+ISR(PCINT0_vect)
+{
+  checkButtons();
 }
 
 const uint8_t BOARD_WIDTH = 8;
@@ -81,10 +101,10 @@ const bool RENDER_SMALL = false;
 // TODO can just be one macro with an input of which button to check
 // also predicating this on one frame not passing means we drop inputs if its going too slow. might want to rethink
 // TODO make millis_per_frame * 12 bit shift? check specification
-#define REPEAT_DELAY 250
-#define SHOULD_MOVE_LEFT (LEFT_BUTTON_FLAG || (leftButton && frameTime - leftButton > REPEAT_DELAY))
-#define SHOULD_ROTATE (RIGHT_BUTTON_FLAG || (rightButton && frameTime - rightButton > REPEAT_DELAY))
-#define SHOULD_MOVE_RIGHT (MIDDLE_BUTTON_FLAG || (upButton && frameTime - upButton > REPEAT_DELAY))
+#define REPEAT_DELAY 500
+#define SHOULD_MOVE_LEFT  (((leftButton  != 0 && leftButton == frameTime))   || (leftButton  && ((frameTime -  leftButton) > REPEAT_DELAY)))
+#define SHOULD_ROTATE     (((rightButton != 0 && rightButton == frameTime))  || (rightButton && ((frameTime - rightButton) > REPEAT_DELAY)))
+#define SHOULD_MOVE_RIGHT ((( upButton   != 0 &&   upButton == frameTime)) || (upButton    && ((frameTime -    upButton) > REPEAT_DELAY)))
 
 
 #define ALL_THREE_BUTTONS_HELD (SHOULD_MOVE_LEFT && SHOULD_MOVE_RIGHT && SHOULD_ROTATE)  //  (buttonFlags == 0b00011010)
@@ -153,6 +173,9 @@ const uint8_t Tetris::numShapes = sizeof(Tetris::shapes) / sizeof(Tetris::shapes
 
 Tetris::Tetris(SSD1306Device* _oled) {
   oled = _oled;
+#if SKIP_A_BIT_BROTHER
+  level = 5;
+#endif
   position = { STARTING_PIECE_WIDTH, STARTING_PIECE_HEIGHT };
 }
 
@@ -172,8 +195,11 @@ void Tetris::main() {
 
     uint16_t millis_per_tick = getMillisPerTick();
 
+    checkButtons();
+
     // if it's not a frame where we move downwards, don't even check for collision
     if ((millis() - lastTickTime > millis_per_tick) || ALL_THREE_BUTTONS_HELD) {
+#if IMMEDIATE_DOWN
       // hacky short circuit to incoporate immediate auto-down into the old event loop
       if (ALL_THREE_BUTTONS_HELD) {
         // clear board of current piece, it'll probably be outside the envelope so do it twice
@@ -184,12 +210,13 @@ void Tetris::main() {
           position.y--;
         }
       }
+#endif
 
       if(!checkCollision({ 0, -1})) {
         movePiece(true);
-        resetButtons();
         renderBoard();
       } else {
+        // we do not move the piece, so we must reset the buttons ourself
         resetButtons();
         // no collisions above the plane of play
         if (position.y >= BOARD_HEIGHT) break;
@@ -214,7 +241,6 @@ void Tetris::main() {
       lastTickTime = millis();
     } else {
       movePiece(false);
-      resetButtons();
       renderBoard();
     }
   }
@@ -245,8 +271,22 @@ void Tetris::resetButtons() {
 }
 
 void Tetris::movePiece(bool moveDown) {
+  // we grab the values of these macros here so they can change below
+  // bool should_move_left = SHOULD_MOVE_LEFT;
+  // bool should_move_right = SHOULD_MOVE_RIGHT;
+  // bool should_rotate = SHOULD_ROTATE;
+  // bool all_three_buttons_held = ALL_THREE_BUTTONS_HELD;
+
+  // we reset the buttons before we're even done updating the piece to grab as much user input as possible
+
   if (moveDown) {
     position.y--;
+  }
+
+  // fast-down overrides other movement
+  // this isn't used if IMMEDIATE_DOWN is enabled
+  if (ALL_THREE_BUTTONS_HELD) {
+    return;
   }
 
   if (SHOULD_MOVE_LEFT) {
@@ -263,6 +303,8 @@ void Tetris::movePiece(bool moveDown) {
   if (SHOULD_ROTATE) {
     rotatePiece();
   }
+
+  resetButtons();
 }
 
 void Tetris::end() {
@@ -303,8 +345,8 @@ void Tetris::assignRandomShape() {
   // find the spot we want to take
   // Entropy is more accurate but causing issues for other games due to Arduino's
   // code loading magic
-  // uint8_t spot = Entropy.random(spotsLeft);
-  uint8_t spot = rand() % spotsLeft;
+//  uint8_t spot = Entropy.random(spotsLeft);
+   uint8_t spot = rand() % spotsLeft;
 
   // and find the actual shape in the array
   int8_t openSpotCounter = -1;
@@ -392,7 +434,7 @@ void Tetris::incrementScore(uint8_t lines) {
 
 void Tetris::incrementLines() {
   lines++;
-  const uint8_t levelMultiplier = SKIP_A_BIT_BROTHER ? 5 : 10;
+  const uint8_t levelMultiplier = (SKIP_A_BIT_BROTHER ? 5 : 10);
 
   if (lines >= (level + 1) * levelMultiplier) {
     lines = 0;
