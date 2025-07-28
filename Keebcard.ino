@@ -1,5 +1,6 @@
- #include <TinyWireM.h>
+#include <TinyWireM.h>
 #include <Tiny4kOLED.h>
+#include <avr/wdt.h>
 // #include <Entropy.h>
 #include "settings.h"
 
@@ -67,8 +68,14 @@ void universal_setup() {
 #endif
 }
 
+void wdt_check_reset() {
+  MCUSR &= ~(1 << WDRF);  // Clear watchdog reset flag
+  wdt_disable();          // Disable watchdog on startup
+}
+
 
 void setup() {
+  wdt_check_reset(); // Disable watchdog timer on startup
   universal_setup();
   setup_game();
 }
@@ -126,4 +133,28 @@ void gameOver(uint32_t score) {
   oled.setCursor(0, 2);
   oled.print(F("Score: "));
   oled.print(score);
+  oled.switchFrame();
+
+  delay(100);
+  
+  // Wait for middle button press to restart
+  while (true) {
+    if (digitalRead(MIDDLE_BUTTON) == LOW) {
+      // Wait for button release to avoid immediate re-trigger
+      while (digitalRead(MIDDLE_BUTTON) == LOW) {
+          delay(10);
+      }
+
+      oled.clear();
+      oled.setCursor(0,0);
+      oled.print(F("Restarting..."));
+      oled.switchFrame();
+
+      delay(100);
+      // Enable watchdog timer and reset system
+      wdt_enable(WDTO_250MS);
+      while(1); // Wait for watchdog reset
+    }
+    delay(10); // Small delay to prevent excessive CPU usage
+  }
 }
