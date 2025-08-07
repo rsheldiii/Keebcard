@@ -87,6 +87,16 @@ void setup_game() {
   sei();                 // enables interrupts
 
   Tetris tetris(&oled);
+  // allow for random start piece by continuously polling for random numbers if any button is pressed
+  while (digitalRead(LEFT_BUTTON) == LOW || digitalRead(RIGHT_BUTTON) == LOW || digitalRead(MIDDLE_BUTTON) == LOW) {
+    rand();
+  }
+  oled.setCursor(8, 1);
+  oled.print(F("This end up ->"));
+  oled.switchFrame();
+  delay(800);
+  oled.switchFrame();
+  oled.clear();
   gameOver(tetris.run());
   oled.switchFrame();
 #elif defined(CONWAY)
@@ -135,26 +145,36 @@ void gameOver(uint32_t score) {
   oled.print(score);
   oled.switchFrame();
 
+  oled.clear();
+  oled.setCursor(0, 0);
+  oled.print(F("Left to restart"));
+  oled.setCursor(0, 2);
+  oled.print(F("Score: "));
+  oled.print(score);
+
   delay(100);
   
   // Wait for middle button press to restart
   while (true) {
-    if (digitalRead(MIDDLE_BUTTON) == LOW) {
-      // Wait for button release to avoid immediate re-trigger
-      while (digitalRead(MIDDLE_BUTTON) == LOW) {
-          delay(10);
+    for (uint8_t i = 0; i < 100; i++) {
+      if (digitalRead(LEFT_BUTTON) == LOW) {
+        // Wait for button release to avoid immediate re-trigger
+        while (digitalRead(LEFT_BUTTON) == LOW) {
+            delay(10);
+        }
+
+        oled.clear();
+        oled.setCursor(0,0);
+        oled.print(F("Restarting..."));
+        oled.switchFrame();
+
+        delay(100);
+        // Enable watchdog timer and reset system
+        wdt_enable(WDTO_250MS);
+        while(1); // Wait for watchdog reset
       }
-
-      oled.clear();
-      oled.setCursor(0,0);
-      oled.print(F("Restarting..."));
-      oled.switchFrame();
-
-      delay(100);
-      // Enable watchdog timer and reset system
-      wdt_enable(WDTO_250MS);
-      while(1); // Wait for watchdog reset
+      delay(10); // Small delay to prevent excessive CPU usage
     }
-    delay(10); // Small delay to prevent excessive CPU usage
+    oled.switchFrame();
   }
 }

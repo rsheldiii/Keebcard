@@ -90,13 +90,15 @@ ISR(PCINT0_vect)
   checkButtons();
 }
 
-const uint8_t BOARD_WIDTH = 8;
-const uint8_t BOARD_HEIGHT = 32;
+constexpr uint8_t BOARD_WIDTH = 8;
+constexpr uint8_t BOARD_HEIGHT = 32;
 
-const uint8_t STARTING_PIECE_WIDTH = 4;
-const uint8_t STARTING_PIECE_HEIGHT = 34;
+constexpr uint8_t STARTING_PIECE_WIDTH = 4;
+constexpr uint8_t STARTING_PIECE_HEIGHT = 33;
 
-const bool RENDER_SMALL = false;
+constexpr uint8_t FLOOR_OFFSET = 1;
+
+constexpr bool RENDER_SMALL = false;
 
 // TODO can just be one macro with an input of which button to check
 // also predicating this on one frame not passing means we drop inputs if its going too slow. might want to rethink
@@ -190,6 +192,10 @@ void Tetris::main() {
   uint32_t lastTickTime = millis();
 
   bool exit = false;
+
+  renderFloor();
+  oled->switchFrame();
+  renderFloor();
 
   while (!exit) {
 
@@ -523,6 +529,22 @@ void Tetris::addOrRemovePiece(bool add) {
   }
 }
 
+// render a floor line at the bottom of the screen
+void Tetris::renderFloor() {
+  oled->setMemoryAddressingMode(1);
+  // Set cursor to the very bottom row of the display (y=0 in screen coordinates)
+  oled->setCursor(0, 0);
+  oled->startData();
+  
+  // draw the floor
+  for (uint8_t i = 0; i < 4; i++) {
+    oled->sendData(0xFF);
+  }
+  
+  oled->endData();
+  oled->setMemoryAddressingMode(0);
+}
+
 // only call this function when the piece is in a good place
 void Tetris::renderBoard(bool wholeScreen, bool addPiece) {
   // add piece to board
@@ -535,7 +557,7 @@ void Tetris::renderBoard(bool wholeScreen, bool addPiece) {
   uint8_t yMin = wholeScreen ? 0 : ((int8_t)(position.y) - 6 < 0 ? 0 : position.y - 6);
   uint8_t yMax = wholeScreen ? BOARD_HEIGHT : (position.y + 6 > BOARD_HEIGHT ? BOARD_HEIGHT : position.y + 6);
 
-  oled->setCursor(yMin*4,0);
+  oled->setCursor(yMin*4+FLOOR_OFFSET,0);
 
   for (uint8_t x = 0; x < (RENDER_SMALL ? 1 : BOARD_WIDTH >> 1); x++) {
     for (uint8_t y = yMin; y < yMax; y++) {
@@ -552,16 +574,26 @@ void Tetris::renderBoard(bool wholeScreen, bool addPiece) {
 
       for (uint8_t i = 0; i < (RENDER_SMALL ? 1 : 4); i++){
         oled->sendData((RENDER_SMALL ? row : block));
-        // cooperative multithreading amirite
+      }
+
+      // we overdraw to the floor since everything's shifted up by 1
+      // it's easier to just redraw than to do this correctly
+      if (y == BOARD_HEIGHT-1) {
+        renderFloor();
       }
 
       oled->endData();
     }
 
-    oled->setCursor(yMin*4,x+1);
+    oled->setCursor(yMin*4+FLOOR_OFFSET,x+1);
   }
   if (RENDER_SMALL) delay(200);
   if (addPiece) addOrRemovePiece(false);
+
+  // if our render envelope covers the floor we'll need to re-render it
+  if (yMin == 0) {
+    renderFloor();
+  }
 
   // debugging
   // oled->setCursor(100,0);
