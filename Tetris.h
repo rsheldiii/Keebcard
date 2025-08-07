@@ -52,6 +52,7 @@ class Tetris {
     void resetButtons(void);
     void movePiece(bool moveDown);
     void renderBoard(bool wholeScreen = false, bool addPiece = true);
+    void renderFloor(void);
     void rotatePiece(void);
     void spawnNewPiece(void);
 };
