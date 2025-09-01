@@ -1,11 +1,15 @@
 #include <TinyWireM.h>
 #include <Tiny4kOLED.h>
 #include <avr/wdt.h>
+#include <EEPROM.h>
 // #include <Entropy.h>
 #include "settings.h"
 
 
 // PROGRAM DEFINES =============================================================
+
+// EEPROM address for storing random seed
+#define RANDOM_SEED_ADDR 0
 
 // uncomment whichever one you want
 // #define BUSINESS_CARD
@@ -51,8 +55,11 @@ void universal_setup() {
   // Turn on the display
   oled.on();
 
-  // seed random number with value from the analog pin
-  // it doesn't vary all that much, but it helps
+  // seed random number with value from EEPROM
+  uint32_t seed = 0;
+  EEPROM.get(RANDOM_SEED_ADDR, seed);
+
+  srand(seed);
   // srand(analogRead(MIDDLE_BUTTON) + analogRead(2) + analogRead(3));
   // here's the good stuff, Entropy based off clock jitter
 //  Entropy.initialize();
@@ -137,6 +144,10 @@ void loop() {
 }
 
 void gameOver(uint32_t score) {
+  // Update EEPROM with a new random seed for next boot
+  uint32_t newSeed = rand();
+  EEPROM.put(RANDOM_SEED_ADDR, newSeed);
+
   oled.clear();
   oled.setCursor(0, 0);
   oled.print(F("Game Over!"));
